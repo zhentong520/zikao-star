@@ -1,0 +1,94 @@
+name: 构建 Android APK
+
+# 用法：
+#   1. 把 zikao-app 整个目录推到 GitHub 私有仓库
+#   2. Actions 页面点 "Run workflow"
+#   3. 约 5-8 分钟后在 Artifacts 下载 apk
+# 本机不需要装 Android Studio / JDK / Gradle，全部在云端完成。
+
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: '构建 Release 签名包（需在 Secrets 配置签名信息）'
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: 安装依赖
+        run: npm install
+
+      - name: 生成图标
+        run: node web/make-icons.js
+
+      - name: 同步 Capacitor
+        run: npx cap sync android
+
+      - name: 缓存 Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('android/**/*.gradle') }}
+
+      - name: 构建 Debug APK
+        if: ${{ !inputs.release }}
+        run: cd android && ./gradlew assembleDebug
+
+      - name: 构建 Release APK（自签名）
+        if: ${{ inputs.release }}
+        run: |
+          cd android
+          # 使用调试签名快速产出可安装包（自用足够）
+          ./gradlew assembleRelease \
+            -Pandroid.injected.signing.credentials.username=androiddebugkey \
+            -Pandroid.injected.signing.credentials.password=android \
+            -Pandroid.injected.signing.credentials.keyAlias=androiddebugkey \
+            -Pandroid.injected.signing.credentials.key.password=android \
+            -Pandroid.injected.signing.store.file=$RUNNER_TEMP/debug.keystore
+
+      - name: 上传 APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: zikao-apk
+          path: |
+            android/app/build/outputs/apk/debug/*.apk
+            android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+
+  ios:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install
+      - run: node web/make-icons.js
+      - run: npx cap sync ios
+      - name: 打包 iOS 模拟器构建产物
+        run: |
+          cd ios/App
+          xcodebuild -workspace App.xcworkspace -scheme App \
+            -sdk iphonesimulator -configuration Release \
+            CODE_SIGNING_ALLOWED=NO build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zikao-ios-simulator
+          path: ios/App/build/**/*.app
+          if-no-files-found: warn

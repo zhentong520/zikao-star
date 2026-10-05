@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFB199"/>
+      <stop offset="1" stop-color="#FF8A7A"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="114" fill="url(#g)"/>
+  <!-- 书本 -->
+  <path d="M136 168c40-18 82-18 120 4v186c-38-22-80-22-120-4z" fill="#fff" opacity=".95"/>
+  <path d="M376 168c-40-18-82-18-120 4v186c38-22 80-22 120-4z" fill="#fff" opacity=".78"/>
+  <path d="M256 172v186" stroke="#FF8A7A" stroke-width="9" stroke-linecap="round"/>
+  <!-- 星星 -->
+  <path d="M256 96l13 27 30 4-22 21 5 30-26-14-26 14 5-30-22-21 30-4z" fill="#FFD66B"/>
+  <!-- 进度环 -->
+  <circle cx="256" cy="410" r="26" fill="none" stroke="#fff" stroke-width="9" opacity=".5"/>
+  <path d="M256 384a26 26 0 0 1 24 16" stroke="#FFD66B" stroke-width="9" stroke-linecap="round" fill="none"/>
+</svg>

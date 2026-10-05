@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">自考星</string>
+    <string name="title_activity_main">自考星</string>
+    <string name="package_name">com.zikaostar.app</string>
+    <string name="custom_url_scheme">com.zikaostar.app</string>
+</resources>
