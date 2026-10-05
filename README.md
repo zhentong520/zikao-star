@@ -5,14 +5,48 @@
 **成人自考本科备考管理工具** —— 选专业自动生成考纲、跟踪考试状态与成绩、实时监测政策变动、计算学位均分
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Android-lightblue.svg)](#-安装)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Android-lightblue.svg)](#-快速开始)
 [![Node](https://img.shields.io/badge/node-%E2%89%A520-green.svg)](https://nodejs.org)
 [![无广告](https://img.shields.io/badge/%E5%B9%BF%E5%91%8A-0-success.svg)](#-隐私承诺)
 [![无追踪](https://img.shields.io/badge/%E8%B7%9F%E8%B8%AA-0-success.svg)](#-隐私承诺)
+[![Release](https://img.shields.io/badge/release-v1.0.0-cf6c3d?logo=github)](https://github.com/zhentong520/zikao-star/releases)
 
 一个**本地优先、零商业化**的自考备考助手。所有数据存在你自己的设备上。
 
 </div>
+
+---
+
+## 📸 界面一览
+
+<div align="center">
+<table>
+<tr>
+<td width="33%"><img src="docs/images/01-home.png" alt="首页" /></td>
+<td width="33%"><img src="docs/images/02-courses.png" alt="科目列表" /></td>
+<td width="33%"><img src="docs/images/03-course-detail.png" alt="科目详情" /></td>
+</tr>
+<tr>
+<td align="center"><b>首页总览</b><br><sub>进度环 · 变动预警 · 资讯TOP3</sub></td>
+<td align="center"><b>科目列表</b><br><sub>按状态分组 · 进度一目了然</sub></td>
+<td align="center"><b>科目详情</b><br><sub>首屏即该科目最相关的3条资讯</sub></td>
+</tr>
+<tr>
+<td><img src="docs/images/04-degree.png" alt="学位看板" /></td>
+<td><img src="docs/images/06-calendar.png" alt="考试日历" /></td>
+<td><img src="docs/images/05-news.png" alt="资讯聚合" /></td>
+</tr>
+<tr>
+<td align="center"><b>学位看板</b><br><sub>均分仪表盘 · 提分建议 · 论文题目库</sub></td>
+<td align="center"><b>考试日历</b><br><sub>倒计时 · 报名节点</sub></td>
+<td align="center"><b>资讯聚合</b><br><sub>本地缓存 · 离线可读</sub></td>
+</tr>
+</table>
+</div>
+
+<p align="center">
+  <sub>界面为实际运行截图（数据为演示数据）· 暖甜设计风格 · 移动端优先布局</sub>
+</p>
 
 ---
 
