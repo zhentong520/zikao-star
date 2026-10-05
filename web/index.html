@@ -1282,6 +1282,9 @@ async function loadNews(){
   S.news=await (MODE==='pc'?API('/api/news?limit=60'+(S.newsCat!=='全部'?'&category='+encodeURIComponent(S.newsCat):'')):ZKLocal.news({limit:60,category:S.newsCat}));
   $('#crawlStat').textContent='上次同步：'+(S.boot?.stats?.lastCrawl||'—');
   renderNews();
+  // 首页也有资讯 TOP3，资讯加载后需重渲染，否则首屏会是空的
+  // （启动顺序是 refresh() → loadNews()，refresh 里那次 renderHome 时数据还没到）
+  if(S.boot) renderHome();
 }
 async function refresh(){
   S.boot=await (MODE==='pc'?API('/api/bootstrap'):Local.bootstrap());
@@ -1298,6 +1301,13 @@ async function refresh(){
     await refresh();
     await loadNews();
     renderCal(); renderDegree();
+    // 截图模式：?shot=courses|degree|cal|news|course  直接切到指定页
+    // 仅用于生成 README 界面图，正常访问不受影响
+    const shot=new URLSearchParams(location.search).get('shot');
+    if(shot){
+      if(shot.startsWith('course=')) openCourse(shot.split('=')[1]);
+      else if(['courses','degree','cal','news','article'].includes(shot)) go(shot);
+    }
     $('#boots').textContent=`已载入 ${S.courses.length} 门课程 · ${S.boot.stats.newsTotal} 条资讯`;
     setTimeout(()=>{$('#boot').classList.add('off');setTimeout(()=>$('#boot').remove(),500)},700);
   }catch(e){
