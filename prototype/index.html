@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>自考星 · 产品原型</title>
+<style>
+:root{
+  --primary:#FF8A7A; --primary-l:#FFD6CC; --primary-xl:#FFF0EC;
+  --secondary:#FFC86B; --accent:#8FC9A9; --info:#7FB8E6;
+  --danger:#F0657A; --warn:#F0A85A;
+  --bg:#FFF9F5; --surface:#FFFFFF; --surface-2:#FFFCFA;
+  --t1:#4A3F3C; --t2:#8C7B76; --t3:#B8A8A3;
+  --line:#F5EAE4;
+  --r-l:20px; --r-m:14px; --r-s:10px;
+  --sh:0 4px 16px rgba(255,138,122,.10);
+  --sh-l:0 8px 28px rgba(255,138,122,.16);
+  --grad:linear-gradient(135deg,#FFB199 0%,#FF8A7A 100%);
+  --grad2:linear-gradient(135deg,#FFD9A0 0%,#FFB26B 100%);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{
+  font-family:"PingFang SC","HarmonyOS Sans","Microsoft YaHei",-apple-system,sans-serif;
+  background:var(--bg);color:var(--t1);line-height:1.6;
+  display:flex;align-items:flex-start;justify-content:center;gap:28px;padding:28px 16px;flex-wrap:wrap;
+}
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+
+/* ========== 外壳 ========== */
+.stage{display:flex;flex-direction:column;align-items:center;gap:10px}
+.stage-label{font-size:12px;color:var(--t3);letter-spacing:.5px}
+.phone{
+  width:375px;height:812px;background:var(--bg);border-radius:38px;overflow:hidden;
+  box-shadow:0 0 0 10px #2E2422,0 0 0 12px #4A3F3C,0 24px 60px rgba(0,0,0,.22);
+  position:relative;display:flex;flex-direction:column;
+}
+.statusbar{
+  height:44px;flex:0 0 44px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 24px;font-size:13px;font-weight:600;color:var(--t1);background:var(--bg);z-index:20;
+  position:relative;
+}
+.notch{position:absolute;left:50%;top:8px;transform:translateX(-50%);width:110px;height:26px;background:#2E2422;border-radius:16px}
+.page{flex:1;overflow-y:auto;overflow-x:hidden;padding:0 18px 20px;scroll-behavior:smooth}
+.page::-webkit-scrollbar{width:0}
+.page-nav{flex:0 0 78px;background:rgba(255,255,255,.94);backdrop-filter:blur(20px);
+  border-top:1px solid var(--line);display:flex;align-items:center;padding-bottom:8px}
+.navbtn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;color:var(--t3);cursor:pointer;transition:.2s;user-select:none}
+.navbtn .ic{font-size:21px;line-height:1;transition:transform .25s}
+.navbtn.on{color:var(--primary);font-weight:600}
+.navbtn.on .ic{transform:translateY(-2px) scale(1.08)}
+.navbtn:active .ic{transform:scale(.9)}
+
+/* ========== 通用组件 ========== */
+.appbar{display:flex;align-items:center;justify-content:space-between;padding:4px 0 16px;position:sticky;top:0;background:var(--bg);z-index:15}
+.appbar h1{font-size:22px;font-weight:700;letter-spacing:-.3px}
+.backbtn{width:34px;height:34px;border-radius:12px;background:var(--surface);box-shadow:var(--sh);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--t1);border:none}
+.iconbtn{width:36px;height:36px;border-radius:12px;background:var(--surface);box-shadow:var(--sh);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;border:none;color:var(--t1)}
+
+.card{background:var(--surface);border-radius:var(--r-l);padding:16px;box-shadow:var(--sh);margin-bottom:12px}
+.card-t{font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.card-t .more{font-size:12px;color:var(--t3);font-weight:400;cursor:pointer}
+.sec-title{font-size:16px;font-weight:700;margin:20px 2px 10px;display:flex;align-items:center;gap:6px}
+.sec-title::before{content:'';width:3px;height:15px;background:var(--grad);border-radius:2px}
+
+.chip{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:600}
+.c-wait{background:#F4EEEA;color:#9A8A85}
+.c-prep{background:var(--primary-l);color:#D2543F}
+.c-done{background:#DCF0E6;color:#3F8B66}
+.c-fail{background:#FFE0E5;color:#C93A50}
+.c-ing{background:#FFF0D4;color:#B8801F}
+.btn{padding:9px 18px;border-radius:999px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:.2s;font-family:inherit}
+.btn-p{background:var(--grad);color:#fff;box-shadow:0 3px 10px rgba(255,138,122,.32)}
+.btn-p:active{transform:scale(.96)}
+.btn-g{background:var(--primary-xl);color:var(--primary)}
+.btn-o{background:transparent;border:1.4px solid var(--primary);color:var(--primary)}
+.btn-full{width:100%;padding:14px;font-size:15px}
+
+/* ========== 进度环 ========== */
+.hero{background:var(--grad);border-radius:26px;padding:20px;color:#fff;box-shadow:0 10px 26px rgba(255,138,122,.3);position:relative;overflow:hidden;margin-bottom:14px}
+.hero::after{content:'';position:absolute;right:-28px;top:-28px;width:120px;height:120px;background:rgba(255,255,255,.14);border-radius:50%}
+.hero::before{content:'';position:absolute;left:-16px;bottom:-30px;width:78px;height:78px;background:rgba(255,255,255,.1);border-radius:50%}
+.hero-h{display:flex;justify-content:space-between;align-items:flex-start;position:relative;z-index:2}
+.hero-h h3{font-size:16px;font-weight:700}
+.hero-h p{font-size:11px;opacity:.9;margin-top:2px}
+.ring-wrap{display:flex;align-items:center;gap:18px;margin-top:14px;position:relative;z-index:2}
+.ring{width:104px;height:104px;flex:0 0 104px;position:relative}
+.ring svg{transform:rotate(-90deg)}
+.ring-c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring-c b{font-size:26px;font-weight:800;letter-spacing:-1px}
+.ring-c span{font-size:10px;opacity:.88;margin-top:-2px}
+.ring-info{flex:1;display:flex;flex-direction:column;gap:8px}
+.ring-info .r1{display:flex;align-items:baseline;gap:5px}
+.ring-info .r1 b{font-size:22px;font-weight:800}
+.ring-info .r1 span{font-size:11px;opacity:.88}
+.ring-info .r2{font-size:11px;opacity:.9;line-height:1.5}
+
+/* 四宫格 */
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.g4{background:var(--surface);border-radius:var(--r-m);padding:11px 6px;text-align:center;box-shadow:var(--sh)}
+.g4 b{display:block;font-size:17px;font-weight:800;color:var(--t1);letter-spacing:-.5px}
+.g4 span{font-size:10px;color:var(--t3);display:block;margin-top:1px}
+.g4.hl b{color:var(--primary)}
+
+/* 倒计时 */
+.cd{background:linear-gradient(135deg,#FFF3D9 0%,#FFE4D0 100%);border-radius:var(--r-l);padding:15px;box-shadow:var(--sh);margin-bottom:12px;position:relative;overflow:hidden}
+.cd::after{content:'⏰';position:absolute;right:12px;bottom:-6px;font-size:58px;opacity:.16}
+.cd-l{font-size:11px;color:#B8801F;font-weight:600;display:flex;align-items:center;gap:5px}
+.cd-n{font-size:34px;font-weight:800;color:#E8853F;letter-spacing:-1.5px;line-height:1.15;margin-top:2px}
+.cd-n small{font-size:13px;font-weight:600;letter-spacing:0}
+.cd-s{font-size:12px;color:#A87038;margin-top:4px}
+
+/* 变动横幅 */
+.alert{background:linear-gradient(120deg,#FFF0F0,#FFE4E4);border-radius:var(--r-m);padding:12px 14px;margin-bottom:12px;
+  display:flex;gap:10px;align-items:center;border:1.4px solid #FFC4C4;cursor:pointer}
+.alert .ai{font-size:20px}
+.alert-t{font-size:13px;font-weight:700;color:#C93A50}
+.alert-s{font-size:11px;color:#D9707F;margin-top:1px}
+
+/* 科目横滑 */
+.hscroll{display:flex;gap:9px;overflow-x:auto;padding:2px 0 8px;margin:0 -18px;padding-left:18px;padding-right:18px}
+.hscroll::-webkit-scrollbar{display:none}
+.cchip{flex:0 0 auto;background:var(--surface);border-radius:var(--r-m);padding:11px 13px;box-shadow:var(--sh);cursor:pointer;transition:.2s;min-width:104px;border:1.6px solid transparent}
+.cchip:active{transform:scale(.96)}
+.cchip.on{border-color:var(--primary);background:var(--primary-xl)}
+.cchip .cc{font-size:10px;color:var(--t3);margin-bottom:3px}
+.cchip .cn{font-size:12.5px;font-weight:700;line-height:1.35;margin-bottom:5px;min-height:33px}
+.cchip .cs{font-size:10.5px;font-weight:600}
+
+/* 资讯卡 */
+.news{background:var(--surface);border-radius:var(--r-m);padding:12px;box-shadow:var(--sh);margin-bottom:9px;cursor:pointer;transition:.2s;position:relative;overflow:hidden}
+.news:active{transform:scale(.985)}
+.news-rank{position:absolute;left:0;top:0;width:26px;height:26px;display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:800;color:#fff;background:var(--grad);border-radius:0 0 12px 0}
+.news-b{padding-left:26px}
+.news-t{font-size:13.5px;font-weight:700;line-height:1.45;margin-bottom:5px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.news-m{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.news-src{font-size:10.5px;color:var(--t3)}
+.news-time{font-size:10.5px;color:var(--t3)}
+.tag-rel{background:var(--primary-xl);color:var(--primary);padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700}
+.tag-new{background:#E4F2FF;color:#3D87C4;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700}
+.tag-hot{background:#FFECEC;color:#D9503F;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700}
+
+/* 鼓励卡 */
+.enc{background:linear-gradient(120deg,#FFF6E8,#FFEFE0);border-radius:var(--r-l);padding:14px 16px;display:flex;align-items:center;gap:12px;box-shadow:var(--sh)}
+.enc-i{font-size:30px}
+.enc-t{font-size:13px;font-weight:700;color:#A87038}
+.enc-s{font-size:11px;color:#BC8B52;margin-top:2px}
+
+/* ========== 列表项 ========== */
+.li{background:var(--surface);border-radius:var(--r-m);padding:13px;box-shadow:var(--sh);margin-bottom:9px;cursor:pointer;transition:.2s}
+.li:active{transform:scale(.985)}
+.li-t{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.li-n{font-size:14.5px;font-weight:700;line-height:1.4}
+.li-c{font-size:11px;color:var(--t3);margin-top:3px}
+.li-m{display:flex;align-items:center;gap:8px;margin-top:9px;flex-wrap:wrap}
+.li-r{margin-left:auto;font-size:12px;color:var(--t3)}
+.bar{height:5px;background:#F4EEEA;border-radius:3px;overflow:hidden;margin-top:9px}
+.bar i{display:block;height:100%;background:var(--grad);border-radius:3px}
+
+.tabs{display:flex;gap:7px;overflow-x:auto;padding:2px 0 10px;margin:0 -18px;padding-left:18px;padding-right:18px}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:0 0 auto;padding:7px 15px;border-radius:999px;font-size:12.5px;font-weight:600;background:var(--surface);
+  color:var(--t2);cursor:pointer;border:1.6px solid transparent;transition:.2s}
+.tab.on{background:var(--grad);color:#fff;box-shadow:0 3px 9px rgba(255,138,122,.3)}
+.tab .n{opacity:.7;font-size:11px;margin-left:2px}
+
+/* ========== 科目详情 ========== */
+.st-hero{background:var(--surface);border-radius:var(--r-l);padding:17px;box-shadow:var(--sh);margin-bottom:12px}
+.st-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.st-code{font-size:11px;color:var(--t3);font-weight:600;letter-spacing:.4px}
+.st-name{font-size:19px;font-weight:800;line-height:1.3;margin:3px 0 8px;letter-spacing:-.4px}
+.st-meta{display:flex;gap:6px;flex-wrap:wrap}
+.score-big{background:linear-gradient(120deg,#F3FBF7,#E9F6EF);border-radius:var(--r-m);padding:15px;margin-bottom:12px;text-align:center;position:relative;overflow:hidden}
+.score-big.fail{background:linear-gradient(120deg,#FFF4F5,#FFE9EC)}
+.score-big .lb{font-size:11.5px;color:#5C8B74;font-weight:600}
+.score-big.fail .lb{color:#C06070}
+.score-big .sc{font-size:46px;font-weight:800;color:#3F8B66;letter-spacing:-2px;line-height:1.1}
+.score-big.fail .sc{color:var(--danger)}
+.score-big .ln{font-size:10.5px;color:var(--t3);margin-top:2px}
+.score-big .pass{position:absolute;left:50%;top:34px;transform:translateX(-50%);width:104px;border-top:1.6px dashed #B8A8A3;opacity:.55}
+.score-big .pl{position:absolute;left:50%;top:29px;transform:translateX(-50%);font-size:9.5px;color:var(--t3);background:#fff;padding:0 5px;opacity:.7}
+
+.kv{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
+.kv:last-child{border-bottom:none}
+.kv .k{color:var(--t2);display:flex;align-items:center;gap:6px}
+.kv .v{font-weight:700;max-width:58%;text-align:right}
+.kv .v.sm{font-size:12px;font-weight:600}
+.impact{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:999px;margin-left:6px}
+.imp-up{background:#DCF0E6;color:#3F8B66}
+.imp-dn{background:#FFE0E5;color:#C93A50}
+
+/* 提醒项 */
+.rm{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--line)}
+.rm:last-child{border-bottom:none}
+.rm-i{width:34px;height:34px;border-radius:11px;background:var(--primary-xl);display:flex;align-items:center;justify-content:center;font-size:16px;flex:0 0 34px}
+.rm-t{font-size:13.5px;font-weight:600}
+.rm-s{font-size:11px;color:var(--t3);margin-top:1px}
+.sw{margin-left:auto;width:42px;height:24px;border-radius:999px;background:#E8DED9;position:relative;cursor:pointer;transition:.25s;flex:0 0 42px}
+.sw::after{content:'';position:absolute;left:3px;top:3px;width:18px;height:18px;background:#fff;border-radius:50%;transition:.25s;box-shadow:0 1px 4px rgba(0,0,0,.16)}
+.sw.on{background:var(--grad)}
+.sw.on::after{transform:translateX(18px)}
+
+/* 注意 */
+.notice{background:var(--primary-xl);border-radius:var(--r-m);padding:13px;margin-bottom:9px}
+.notice-h{font-size:13px;font-weight:700;color:#D2543F;display:flex;align-items:center;gap:5px;margin-bottom:6px}
+.notice ul{list-style:none}
+.notice li{font-size:12.5px;color:#8B5A4C;padding-left:14px;position:relative;margin-bottom:4px;line-height:1.55}
+.notice li::before{content:'·';position:absolute;left:4px;font-weight:800;color:var(--primary);font-size:16px;line-height:1.2}
+
+/* 吸底操作 */
+.actionbar{flex:0 0 auto;background:rgba(255,255,255,.97);backdrop-filter:blur(20px);border-top:1px solid var(--line);
+  padding:10px 18px 14px;display:flex;gap:9px;z-index:20}
+.actionbar .btn{flex:1;text-align:center}
+.hide{display:none!important}
+
+/* ========== 日历 ========== */
+.cal{background:var(--surface);border-radius:var(--r-l);padding:15px;box-shadow:var(--sh);margin-bottom:12px}
+.cal-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.cal-h b{font-size:16px;font-weight:700}
+.cal-w{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center;margin-bottom:5px}
+.cal-w span{font-size:10.5px;color:var(--t3);font-weight:600;padding:4px 0}
+.cal-g{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.cal-d{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12.5px;border-radius:11px;position:relative;cursor:pointer;transition:.15s}
+.cal-d.out{color:#DDD0CA}
+.cal-d.we{color:#E8A0A8}
+.cal-d.on{background:var(--grad);color:#fff;font-weight:800;box-shadow:0 3px 9px rgba(255,138,122,.34)}
+.cal-d .dot{width:4px;height:4px;border-radius:50%;background:var(--primary);position:absolute;bottom:5px}
+.cal-d.on .dot{background:#fff}
+.cal-d .dot.b{background:var(--accent)}
+.cal-d .dot.y{background:var(--secondary)}
+.cal-lg{display:flex;gap:14px;justify-content:center;margin-top:12px;padding-top:11px;border-top:1px solid var(--line)}
+.cal-lg span{font-size:10.5px;color:var(--t2);display:flex;align-items:center;gap:4px}
+.cal-lg i{width:6px;height:6px;border-radius:50%;display:block}
+
+.evt{background:var(--surface);border-radius:var(--r-m);padding:13px;box-shadow:var(--sh);margin-bottom:9px;display:flex;gap:11px;cursor:pointer}
+.evt-d{width:44px;flex:0 0 44px;border-radius:12px;background:var(--primary-xl);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 0}
+.evt-d b{font-size:17px;font-weight:800;color:var(--primary);letter-spacing:-.5px;line-height:1}
+.evt-d span{font-size:9px;color:var(--primary);opacity:.75}
+.evt-t{font-size:13.5px;font-weight:700;line-height:1.4}
+.evt-s{font-size:11px;color:var(--t2);margin-top:3px}
+
+/* ========== 学位 ========== */
+.dg{background:linear-gradient(135deg,#EAF7F0,#DCF0E6);border-radius:var(--r-l);padding:18px;box-shadow:var(--sh);margin-bottom:12px;position:relative;overflow:hidden;text-align:center}
+.dg::after{content:'🎓';position:absolute;right:10px;bottom:-10px;font-size:60px;opacity:.13}
+.dg-l{font-size:12px;color:#5C8B74;font-weight:600;position:relative;z-index:2}
+.gauge{height:96px;position:relative;margin:8px 0 2px;z-index:2}
+.gauge svg{width:100%;height:100%}
+.dg-n{font-size:34px;font-weight:800;color:#3F8B66;letter-spacing:-1.5px;line-height:1;position:relative;z-index:2}
+.dg-s{font-size:11.5px;color:#6B9C85;position:relative;z-index:2}
+
+.cond{background:var(--surface);border-radius:var(--r-m);padding:13px;box-shadow:var(--sh);margin-bottom:9px;display:flex;gap:11px;align-items:flex-start}
+.cond-i{width:26px;height:26px;border-radius:50%;flex:0 0 26px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff}
+.cond-i.ok{background:var(--accent)}
+.cond-i.no{background:#E8DED9;color:var(--t3)}
+.cond-t{font-size:13.5px;font-weight:700;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.cond-s{font-size:11.5px;color:var(--t2);margin-top:2px;line-height:1.5}
+
+.sim{background:var(--surface);border-radius:var(--r-m);padding:15px;box-shadow:var(--sh);margin-bottom:12px}
+.slider{width:100%;-webkit-appearance:none;height:7px;border-radius:4px;background:linear-gradient(90deg,var(--primary) 0%,var(--primary) var(--pct,60%),#F0E6E0 var(--pct,60%),#F0E6E0 100%);outline:none;margin:12px 0 6px}
+.slider::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:#fff;
+  box-shadow:0 2px 8px rgba(255,138,122,.5);border:3px solid var(--primary);cursor:pointer}
+.sim-r{display:flex;justify-content:space-between;font-size:12px;color:var(--t2)}
+.sim-r b{font-size:17px;font-weight:800;color:var(--primary)}
+
+.thesis{background:var(--surface);border-radius:var(--r-m);padding:13px;box-shadow:var(--sh);margin-bottom:9px}
+.th-t{font-size:13.5px;font-weight:700;margin-bottom:9px;display:flex;align-items:center;gap:6px}
+.steps{display:flex;align-items:flex-start;gap:0}
+.step{flex:1;text-align:center;position:relative}
+.step::before{content:'';position:absolute;top:11px;left:-50%;width:100%;height:2px;background:#F0E6E0;z-index:0}
+.step:first-child::before{display:none}
+.step.done::before,.step.cur::before{background:var(--primary)}
+.step-c{width:22px;height:22px;border-radius:50%;background:#F0E6E0;color:var(--t3);font-size:11px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;margin:0 auto 5px;position:relative;z-index:1}
+.step.done .step-c{background:var(--grad);color:#fff}
+.step.cur .step-c{background:#fff;border:2.4px solid var(--primary);color:var(--primary);box-shadow:0 0 0 4px var(--primary-xl)}
+.step-l{font-size:9.5px;color:var(--t3);line-height:1.3}
+.step.done .step-l,.step.cur .step-l{color:var(--t1);font-weight:600}
+
+.tdir{background:var(--surface);border-radius:var(--r-m);padding:12px;box-shadow:var(--sh);margin-bottom:8px;display:flex;gap:10px;align-items:center;cursor:pointer}
+.tdir-b{flex:1;min-width:0}
+.tdir-t{font-size:13.5px;font-weight:700;line-height:1.4;margin-bottom:4px}
+.tdir-m{display:flex;gap:5px;flex-wrap:wrap}
+.tdir-r{text-align:center;flex:0 0 40px}
+.stars{font-size:10px;color:var(--secondary);letter-spacing:-1px}
+.heat{font-size:9.5px;color:var(--primary);font-weight:700;margin-top:2px}
+
+/* ========== 建档向导 ========== */
+.wiz{background:var(--surface);border-radius:var(--r-l);padding:14px;box-shadow:var(--sh);margin-bottom:10px;cursor:pointer;transition:.2s;border:1.8px solid transparent}
+.wiz:active{transform:scale(.985)}
+.wiz.on{border-color:var(--primary);background:var(--primary-xl)}
+.wiz-t{font-size:15px;font-weight:700;margin-bottom:3px}
+.wiz-s{font-size:11.5px;color:var(--t2);line-height:1.5}
+.pill-row{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.pill{padding:7px 14px;border-radius:999px;background:var(--bg);font-size:12.5px;font-weight:600;cursor:pointer;transition:.2s;border:1.5px solid transparent}
+.pill.on{background:var(--grad);color:#fff;box-shadow:0 3px 9px rgba(255,138,122,.3)}
+
+.plancard{background:var(--surface);border-radius:var(--r-l);padding:16px;box-shadow:var(--sh);margin-bottom:12px;
+  background:linear-gradient(150deg,#FFFDFC 0%,#FFF6F2 100%)}
+.pc-h{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:12px}
+.pc-code{font-size:11px;color:var(--primary);font-weight:700;background:var(--primary-xl);padding:3px 9px;border-radius:999px}
+.pc-n{font-size:19px;font-weight:800;letter-spacing:-.4px;margin:5px 0 2px}
+.pc-s{font-size:12px;color:var(--t2)}
+.pc-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;padding:12px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-bottom:12px}
+.pc-s1{text-align:center}
+.pc-s1 b{font-size:19px;font-weight:800;color:var(--primary);letter-spacing:-.5px}
+.pc-s1 span{font-size:10.5px;color:var(--t3);display:block}
+
+/* 弹窗 */
+.mask{position:absolute;inset:0;background:rgba(74,63,60,.4);backdrop-filter:blur(3px);z-index:50;
+  display:flex;align-items:flex-end;opacity:0;pointer-events:none;transition:.3s}
+.mask.on{opacity:1;pointer-events:auto}
+.sheet{background:var(--bg);border-radius:28px 28px 0 0;width:100%;padding:8px 20px 24px;transform:translateY(100%);transition:transform .32s cubic-bezier(.32,.72,0,1);max-height:88%;overflow-y:auto}
+.mask.on .sheet{transform:translateY(0)}
+.sh-h{display:flex;justify-content:space-between;align-items:center;padding:10px 0 16px;position:sticky;top:0;background:var(--bg);z-index:2}
+.sh-h b{font-size:17px;font-weight:700}
+.sh-bar{width:36px;height:4px;border-radius:2px;background:#E5D8D2;margin:0 auto 4px}
+.inp{width:100%;padding:13px 14px;border-radius:var(--r-m);border:1.6px solid var(--line);background:var(--surface);
+  font-size:14px;font-family:inherit;color:var(--t1);outline:none;transition:.2s}
+.inp:focus{border-color:var(--primary);background:var(--primary-xl)}
+.sc-input{text-align:center;font-size:52px;font-weight:800;letter-spacing:-2px;padding:8px;color:var(--primary)}
+.sc-hint{text-align:center;font-size:12px;margin-top:2px;min-height:18px;font-weight:600}
+.opts{display:flex;gap:8px;flex-wrap:wrap}
+.opt{padding:8px 15px;border-radius:999px;background:var(--bg);font-size:13px;font-weight:600;cursor:pointer;transition:.2s;border:1.6px solid transparent}
+.opt.on{background:var(--primary-xl);color:var(--primary);border-color:var(--primary)}
+
+/* 对比页 */
+.cmp{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:12px}
+.cmp-c{background:var(--surface);border-radius:var(--r-m);padding:11px 8px;box-shadow:var(--sh);text-align:center}
+.cmp-c.on{background:var(--primary-xl);box-shadow:0 0 0 1.6px var(--primary),var(--sh)}
+.cmp-n{font-size:12.5px;font-weight:700;line-height:1.35;min-height:34px;margin-bottom:7px}
+.cmp-d{font-size:17px;font-weight:800;color:var(--primary)}
+.cmp-s{font-size:10px;color:var(--t3)}
+
+/* 变动对比 */
+.cmpbox{background:var(--surface);border-radius:var(--r-m);padding:13px;box-shadow:var(--sh);margin-bottom:10px}
+.dif{display:flex;align-items:center;gap:9px;padding:9px 0;border-bottom:1px solid var(--line);font-size:12.5px}
+.dif:last-child{border-bottom:none}
+.dif-b{flex:1;min-width:0}
+.dif-t{font-size:13px;font-weight:700;margin-bottom:2px}
+.dif-old{color:var(--t3);text-decoration:line-through;font-size:11.5px}
+.dif-new{color:var(--accent);font-weight:700;font-size:11.5px}
+.arrow{color:var(--t3);font-size:14px;flex:0 0 auto}
+
+.legend{background:#FFFDFB;border:1.4px dashed #E8D8D0;border-radius:var(--r-m);padding:11px 13px;margin-bottom:12px;font-size:11.5px;color:var(--t2);line-height:1.6}
+</style>
+</head>
+<body>
+
+<!-- ============ P1 首页 ============ -->
+<div class="stage">
+  <div class="stage-label">① 首页 · 报考总览</div>
+  <div class="phone">
+    <div class="statusbar"><span class="num">9:41</span><div class="notch"></div><span>📶 🔋</span></div>
+    <div class="page" id="p1">
+      <div class="appbar">
+        <div><h1>早安，小鹿 ☀️</h1><div style="font-size:11.5px;color:var(--t3);margin-top:2px">今天也是被学习 bless 的一天</div></div>
+        <div class="iconbtn">🔔</div>
+      </div>
+
+      <div class="hero">
+        <div class="hero-h">
+          <div><h3>🎓 华南师范大学</h3><p>广东省 · 计算机科学与技术 · 专升本</p></div>
+          <div style="text-align:right;background:rgba(255,255,255,.2);padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700">080901</div>
+        </div>
+        <div class="ring-wrap">
+          <div class="ring">
+            <svg width="104" height="104">
+              <circle cx="52" cy="52" r="43" stroke="rgba(255,255,255,.24)" stroke-width="11" fill="none"/>
+              <circle cx="52" cy="52" r="43" stroke="#fff" stroke-width="11" fill="none" stroke-linecap="round"
+                stroke-dasharray="270.2" stroke-dashoffset="86.5"/>
+            </svg>
+            <div class="ring-c"><b class="num">68%</b><span>毕业进度</span></div>
+          </div>
+          <div class="ring-info">
+            <div class="r1"><b class="num">51</b><span>/ 75 学分</span></div>
+            <div class="r1"><b class="num">6</b><span>/ 16 门已过</span></div>
+            <div class="r2">预计 2027 年 4 月毕业<br>按当前节奏可提前 1 考期 🌸</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid4">
+        <div class="g4"><b class="num">74.2</b><span>学位均分</span></div>
+        <div class="g4 hl"><b class="num">✓</b><span>学位达标</span></div>
+        <div class="g4"><b class="num">10</b><span>待考科目</span></div>
+        <div class="g4"><b class="num">2</b><span>待补考</span></div>
+      </div>
+
+      <div class="alert" onclick="go('p6',1)">
+        <div class="ai">⚠️</div>
+        <div style="flex:1">
+          <div class="alert-t">你的专业有 3 项重要变动</div>
+          <div class="alert-s">考试时间调整 · 1 门加考课新增</div>
+        </div>
+        <div style="color:#C93A50;font-size:17px">›</div>
+      </div>
+
+      <div class="cd">
+        <div class="cd-l">🔥 距下一场考试</div>
+        <div class="cd-n num">23 <small>天</small></div>
+        <div class="cd-s">10 月 24 日（周六）上午 9:00-11:30 · 高等数学(工本)</div>
+      </div>
+
+      <div class="sec-title">待考科目 <span style="font-size:11px;color:var(--t3);font-weight:400;margin-left:auto">共 10 门 ›</span></div>
+      <div class="hscroll">
+        <div class="cchip" onclick="go('p3')"><div class="cc">00023</div><div class="cn">高等数学(工本)</div><div class="cs c-ing">已报名 · 10/24</div></div>
+        <div class="cchip" onclick="go('p3')"><div class="cc">13000</div><div class="cn">英语(专升本)</div><div class="cs c-ing">已报名 · 10/24</div></div>
+        <div class="cchip" onclick="go('p3')"><div class="cc">02324</div><div class="cn">离散数学</div><div class="cs c-ing">已报名 · 10/24</div></div>
+        <div class="cchip" onclick="go('p3')"><div class="cc">13180</div><div class="cn">操作系统</div><div class="cs c-ing">已报名 · 10/24</div></div>
+        <div class="cchip" onclick="go('p3')"><div class="cc">13005</div><div class="cn">软件工程</div><div class="cs c-ing">已报名 · 10/24</div></div>
+        <div class="cchip" onclick="go('p3')"><div class="cc">13003</div><div class="cn">数据结构与算法</div><div class="cs c-wait">待考</div></div>
+        <div class="cchip" onclick="go('p3')"><div class="cc">13015</div><div class="cn">计算机系统原理</div><div class="cs c-wait">待考</div></div>
+      </div>
+
+      <div class="sec-title">📰 本专业资讯 <span class="tag-hot" style="margin-left:4px">变动</span></div>
+      <div class="news" onclick="go('p4')">
+        <div class="news-rank">1</div>
+        <div class="news-b">
+          <div class="news-t">【重要】2026年10月自考开考课程考试时间安排表发布，10月24日开考</div>
+          <div class="news-m"><span class="tag-rel">高相关</span><span class="news-src">📋 广东省教育考试院</span><span class="news-time">2小时前</span></div>
+        </div>
+      </div>
+      <div class="news" onclick="go('p4')">
+        <div class="news-rank">2</div>
+        <div class="news-b">
+          <div class="news-t">华师2026年夏季学位申请通知：均分≥70且论文答辩≥70，10月8日截止</div>
+          <div class="news-m"><span class="tag-rel">高相关</span><span class="news-src">🎓 华师继续教育学院</span><span class="news-time">昨天</span></div>
+        </div>
+      </div>
+      <div class="news" onclick="go('p4')">
+        <div class="news-rank">3</div>
+        <div class="news-b">
+          <div class="news-t">计算机高级程序设计(08074)本次调整为可选考，请谨慎选择</div>
+          <div class="news-m"><span class="tag-new">新政策</span><span class="news-src">📰 自考网</span><span class="news-time">3天前</span></div>
+        </div>
+      </div>
+
+      <div class="enc">
+        <div class="enc-i">🌷</div>
+        <div><div class="enc-t">你已超过 72% 的同专业考友</div><div class="enc-s">剩下 10 门，按每年 3 次考期，还能考 5 轮，时间很宽裕</div></div>
+      </div>
+    </div>
+    <div class="page-nav">
+      <div class="navbtn on" onclick="go('p1')"><span class="ic">🏠</span>首页</div>
+      <div class="navbtn" onclick="go('p2')"><span class="ic">📚</span>科目</div>
+      <div class="navbtn" onclick="go('p5')"><span class="ic">🗓</span>日历</div>
+      <div class="navbtn" onclick="go('p7')"><span class="ic">🎓</span>学位</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ P2 科目列表 ============ -->
+<div class="stage">
+  <div class="stage-label">② 科目列表</div>
+  <div class="phone">
+    <div class="statusbar"><span class="num">9:41</span><div class="notch"></div><span>📶 🔋</span></div>
+    <div class="page">
+      <div class="appbar">
+        <h1>我的科目</h1>
+        <div class="iconbtn" onclick="go('p8')">🔍</div>
+      </div>
+      <div class="legend">📌 广东省 · 华南师范大学 · 080901 计算机科学与技术（专升本）<br>2026 版考纲 · 必考 16 门 / 75 学分 · 数据核验于 2026-10-01</div>
+      <div class="tabs">
+        <div class="tab on">待考 <span class="n">6</span></div>
+        <div class="tab">备考中 <span class="n">3</span></div>
+        <div class="tab">待补考 <span class="n">2</span></div>
+        <div class="tab">已通过 <span class="n">6</span></div>
+        <div class="tab">实践论文 <span class="n">1</span></div>
+      </div>
+
+      <div class="sec-title">已报名 · 2026年10月考期</div>
+      <div class="li" onclick="go('p3')">
+        <div class="li-t">
+          <div><div class="li-n">高等数学(工本)</div><div class="li-c">00023 · 10 学分 · 笔试</div></div>
+          <span class="chip c-ing">已报名</span>
+        </div>
+        <div class="li-m"><span style="font-size:11.5px;color:var(--t2)">📅 10月24日 上午 9:00</span><span class="li-r">倒计时 23 天 ›</span></div>
+        <div class="bar"><i style="width:34%"></i></div>
+      </div>
+      <div class="li" onclick="go('p3')">
+        <div class="li-t">
+          <div><div class="li-n">英语(专升本)</div><div class="li-c">13000 · 7 学分 · 笔试</div></div>
+          <span class="chip c-ing">已报名</span>
+        </div>
+        <div class="li-m"><span style="font-size:11.5px;color:var(--t2)">📅 10月24日 上午 9:00</span><span class="li-r">倒计时 23 天 ›</span></div>
+        <div class="bar"><i style="width:52%"></i></div>
+      </div>
+      <div class="li" onclick="go('p3')">
+        <div class="li-t">
+          <div><div class="li-n">离散数学</div><div class="li-c">02324 · 4 学分 · 笔试</div></div>
+          <span class="chip c-ing">已报名</span>
+        </div>
+        <div class="li-m"><span style="font-size:11.5px;color:var(--t2)">📅 10月24日 上午 9:00</span><span class="li-r">倒计时 23 天 ›</span></div>
+        <div class="bar"><i style="width:41%"></i></div>
+      </div>
+
+      <div class="sec-title">待考 · 尚未报名</div>
+      <div class="li" onclick="go('p3')">
+        <div class="li-t">
+          <div><div class="li-n">数据结构与算法</div><div class="li-c">13003 · 4 学分 · 笔试 + 实践 13004</div></div>
+          <span class="chip c-wait">待考</span>
+        </div>
+        <div class="li-m"><span style="font-size:11.5px;color:var(--t2)">📅 预计 2027年1月</span><span class="li-r">还可考 1 轮 ›</span></div>
+      </div>
+      <div class="li" onclick="go('p3')">
+        <div class="li-t">
+          <div><div class="li-n">计算机系统原理</div><div class="li-c">13015 · 4 学分 · 笔试</div></div>
+          <span class="chip c-wait">待考</span>
+        </div>
+        <div class="li-m"><span style="font-size:11.5px;color:var(--t2)">📅 预计 2027年1月</span><span class="li-r">还可考 1 轮 ›</span></div>
+      </div>
+
+      <div class="sec-title">待补考</div>
+      <div class="li" onclick="go('p3')">
+        <div class="li-t">
+          <div><div class="li-n">数据库原理与技术</div><div class="li-c">13009 · 4 学分 · 笔试</div></div>
+          <span class="chip c-fail">未通过 52</span>
+        </div>
+        <div class="li-m"><span style="font-size:11.5px;color:var(--t2)">上次：2026-04-12 · 补考拉低均分 0.4</span></div>
+      </div>
+    </div>
+    <div class="page-nav">
+      <div class="navbtn" onclick="go('p1')"><span class="ic">🏠</span>首页</div>
+      <div class="navbtn on" onclick="go('p2')"><span class="ic">📚</span>科目</div>
+      <div class="navbtn" onclick="go('p5')"><span class="ic">🗓</span>日历</div>
+      <div class="navbtn" onclick="go('p7')"><span class="ic">🎓</span>学位</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ P3 科目详情（核心） ============ -->
+<div class="stage">
+  <div class="stage-label">③ 科目详情 · 资讯TOP3 + 状态 + 录分</div>
+  <div class="phone">
+    <div class="statusbar"><span class="num">9:41</span><div class="notch"></div><span>📶 🔋</span></div>
+    <div class="page" style="padding-bottom:0">
+      <div class="appbar">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="backbtn" onclick="go('p2')">‹</div>
+          <b style="font-size:16px">科目详情</b>
+        </div>
+        <div style="display:flex;gap:7px"><div class="iconbtn">⭐</div><div class="iconbtn" onclick="openSheet('edit')">✏️</div></div>
+      </div>
+
+      <div class="st-hero">
+        <div class="st-top">
+          <div style="flex:1">
+            <div class="st-code">课程代码 00023</div>
+            <div class="st-name">高等数学(工本)</div>
+            <div class="st-meta">
+              <span class="chip c-ing">已报名</span>
+              <span class="chip c-wait">10 学分</span>
+              <span class="chip c-wait">笔试</span>
+              <span class="chip c-wait">必考</span>
+            </div>
+          </div>
+        </div>
+        <div style="border-top:1px solid var(--line);margin:13px 0 3px"></div>
+        <div class="kv"><div class="k">📅 最近一次考试</div><div class="v num">2026-10-24 上午</div></div>
+        <div class="kv"><div class="k">⏳ 距离考试</div><div class="v num" style="color:var(--primary)">23 天</div></div>
+        <div class="kv"><div class="k">📍 考点城市</div><div class="v">广州市 · 待分配</div></div>
+        <div class="kv"><div class="k">📌 我的已考状态</div><div class="v sm">首次报考，暂无成绩</div></div>
+      </div>
+
+      <div class="score-big">
+        <div class="lb">我的成绩</div>
+        <div class="sc num">—</div>
+        <div class="ln">及格线 60 分 · 考完后可录入成绩</div>
+        <div style="margin-top:12px"><button class="btn btn-p btn-full" onclick="openSheet('score')">✏️ 录入 / 编辑成绩</button></div>
+      </div>
+
+      <div class="card">
+        <div class="card-t">📊 对学位均分的影响<span class="more">学位均分 74.2 ›</span></div>
+        <div class="kv"><div class="k">当前均分（加权）</div><div class="v num">74.2 <span class="impact imp-up">达标 ✓</span></div></div>
+        <div class="kv"><div class="k">学位要求</div><div class="v num">≥ 70.0</div></div>
+        <div class="kv"><div class="k">若本科考 85 分</div><div class="v num" style="color:var(--accent)">75.1 <span class="impact imp-up">↑ 0.9</span></div></div>
+        <div class="kv"><div class="k">若本科考 60 分</div><div class="v num" style="color:var(--danger)">73.1 <span class="impact imp-dn">↓ 1.1</span></div></div>
+      </div>
+
+      <div class="sec-title">📰 本科目资讯 TOP3</div>
+      <div class="news">
+        <div class="news-rank">1</div>
+        <div class="news-b">
+          <div class="news-t">2026年10月自考《高等数学(工本)》开考科目确认，10月24日上午9:00</div>
+          <div class="news-m"><span class="tag-rel">高相关 98%</span><span class="news-src">📋 广东省教育考试院</span><span class="news-time">2小时前</span></div>
+        </div>
+      </div>
+      <div class="news">
+        <div class="news-rank">2</div>
+        <div class="news-b">
+          <div class="news-t">高等数学(工本)2026年考纲未调整，沿用2025版大纲，题型稳定</div>
+          <div class="news-m"><span class="tag-rel">高相关 91%</span><span class="news-src">📰 自考网</span><span class="news-time">1天前</span></div>
+        </div>
+      </div>
+      <div class="news">
+        <div class="news-rank">3</div>
+        <div class="news-b">
+          <div class="news-t">高数真题的高频考点分布：极限 32%、导数 28%、积分 25%</div>
+          <div class="news-m"><span class="tag-rel">相关 84%</span><span class="news-src">💬 考友经验</span><span class="news-time">5天前</span></div>
+        </div>
+      </div>
+      <div style="text-align:center;font-size:12px;color:var(--primary);font-weight:600;padding:6px 0 14px;cursor:pointer" onclick="go('p4')">查看全部相关资讯 ›</div>
+
+      <div class="card">
+        <div class="card-t">⏰ 时间与提醒<span class="more">已开启 4 项</span></div>
+        <div class="rm"><div class="rm-i">📝</div><div><div class="rm-t">报名截止提醒</div><div class="rm-s num">2026-08-31 · 已完成报名</div></div><div class="sw on"></div></div>
+        <div class="rm"><div class="rm-i">📖</div><div><div class="rm-t">考前 7 天提醒</div><div class="rm-s num">2026-10-17 20:00</div></div><div class="sw on"></div></div>
+        <div class="rm"><div class="rm-i">🔥</div><div><div class="rm-t">考前 1 天提醒</div><div class="rm-s num">2026-10-23 20:00</div></div><div class="sw on"></div></div>
+        <div class="rm"><div class="rm-i">📊</div><div><div class="rm-t">成绩公布提醒</div><div class="rm-s num">预计 2026-12-中下旬</div></div><div class="sw on"></div></div>
+        <button class="btn btn-g btn-full" style="margin-top:12px" onclick="toast('已添加到系统日历 📅')">📅 添加到系统日历</button>
+      </div>
+
+      <div class="sec-title">⚠️ 考试注意事项</div>
+      <div class="notice">
+        <div class="notice-h">🎫 证件要求</div>
+        <ul>
+          <li>须携带本人有效身份证原件及准考证，缺一不可</li>
+          <li>身份证过期或遗失需提前办理临时身份证</li>
+        </ul>
+      </div>
+      <div class="notice">
+        <div class="notice-h">🖊️ 本科目特别提醒</div>
+        <ul>
+          <li>允许使用无存储功能计算器（普通函数计算器），禁止智能计算器</li>
+          <li>答题须用黑色签字笔，涂改用修正带，不得使用修正液</li>
+          <li>本科目无简答题，填空与选择占比高，建议重点刷真题</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-t">📝 我的私人备忘<span class="more">编辑</span></div>
+        <div style="font-size:12.5px;color:var(--t2);line-height:1.7;white-space:pre-line">教材：高等数学(工本)同济第七版
+考点老师：××培训机构 王老师
+错题本：极限部分 3 道 / 导数 2 道
+上次模考：58 分（差 2 分及格，加油💪）</div>
+      </div>
+      <div style="height:8px"></div>
+    </div>
+    <div class="actionbar">
+      <button class="btn btn-o" onclick="openSheet('edit')">编辑科目</button>
+      <button class="btn btn-p" onclick="openSheet('score')">录入成绩</button>
+      <button class="btn btn-g" onclick="toast('提醒已开启 🔔')">提醒我</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ P4 资讯流 ============ -->
+<div class="stage">
+  <div class="stage-label">④ 资讯聚合</div>
+  <div class="phone">
+    <div class="statusbar"><span class="num">9:41</span><div class="notch"></div><span>📶 🔋</span></div>
+    <div class="page">
+      <div class="appbar">
+        <h1>资讯</h1>
+        <div class="iconbtn">🔍</div>
+      </div>
+      <div class="tabs">
+        <div class="tab on">本专业</div>
+        <div class="tab">本院校</div>
+        <div class="tab">考试院</div>
+        <div class="tab">变动</div>
+        <div class="tab">经验</div>
+      </div>
+      <div class="alert" style="background:linear-gradient(120deg,#FFF7F0,#FFEFE2);border-color:#FFD9B8">
+        <div class="ai">🔄</div>
+        <div style="flex:1"><div class="alert-t" style="color:#B8801F">自动监测中</div>
+        <div class="alert-s" style="color:#C79A5A">上次同步 2 小时前 · 已为你抓取 128 条</div></div>
+      </div>
+      <div class="news" onclick="go('p6',1)">
+        <div class="news-m" style="margin-bottom:6px"><span class="tag-hot">考试变动</span><span class="news-time">2小时前</span></div>
+        <div class="news-t" style="padding-left:0">【重要】2026年10月自考开考课程考试时间安排表发布，10月24-25日开考</div>
+        <div class="news-m"><span class="news-src">📋 广东省教育考试院</span><span class="li-r" style="color:var(--primary);font-weight:600">原文 ›</span></div>
+      </div>
+      <div class="news">
+        <div class="news-m" style="margin-bottom:6px"><span class="tag-rel">学位</span><span class="news-time">昨天</span></div>
+        <div class="news-t" style="padding-left:0">华师2026年夏季学位申请通知：均分≥70且论文答辩≥70，10月8日截止</div>
+        <div class="news-m"><span class="news-src">🎓 华师继续教育学院</span><span class="li-r" style="color:var(--primary);font-weight:600">原文 ›</span></div>
+      </div>
+      <div class="news">
+        <div class="news-m" style="margin-bottom:6px"><span class="tag-new">考纲</span><span class="news-time">2天前</span></div>
+        <div class="news-t" style="padding-left:0">广东2027年自考专业计划调整预告：涉及23个专业，含计算机类</div>
+        <div class="news-m"><span class="news-src">📰 自考网</span><span class="li-r" style="color:var(--primary);font-weight:600">原文 ›</span></div>
+      </div>
+      <div class="news">
+        <div class="news-m" style="margin-bottom:6px"><span class="tag-rel">经验</span><span class="news-time">3天前</span></div>
+        <div class="news-t" style="padding-left:0">计算机科学与技术自考全流程经验：从报名到学位申请，我踩过的 7 个坑</div>
+        <div class="news-m"><span class="news-src">💬 考友社区 · 128 赞</span><span class="li-r" style="color:var(--primary);font-weight:600">阅读 ›</span></div>
+      </div>
+      <div class="news">
+        <div class="news-m" style="margin-bottom:6px"><span class="tag-new">实践</span><span class="news-time">4天前</span></div>
+        <div class="news-t" style="padding-left:0">2026年上半年实践考核（数据结构与算法）考核安排已公布</div>
+        <div class="news-m"><span class="news-src">🎓 华师继续教育学院</span><span class="li-r" style="color:var(--primary);font-weight:600">原文 ›</span></div>
+      </div>
+      <div style="text-align:center;padding:16px 0 6px;font-size:12px;color:var(--t3)">— 已加载全部 · 每天自动更新 3 次 —</div>
+    </div>
+    <div class="page-nav">
+      <div class="navbtn" onclick="go('p1')"><span class="ic">🏠</span>首页</div>
+      <div class="navbtn" onclick="go('p2')"><span class="ic">📚</span>科目</div>
+      <div class="navbtn on" onclick="go('p4')"><span class="ic">📰</span>资讯</div>
+      <div class="navbtn" onclick="go('p7')"><span class="ic">🎓</span>学位</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ P5 日历 ============ -->
+<div class="stage">
+  <div class="stage-label">⑤ 考试日历 + 考科规划</div>
+  <div class="phone">
+    <div class="statusbar"><span class="num">9:41</span><div class="notch"></div><span>📶 🔋</span></div>
+    <div class="page">
+      <div class="appbar"><h1>考试日历</h1><div class="iconbtn" onclick="go('p9')">✨</div></div>
+      <div class="cal">
+        <div class="cal-h"><b class="num">2026 年 10 月</b><div style="color:var(--t3);font-size:17px">‹ ›</div></div>
+        <div class="cal-w"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span class="we">六</span><span class="we">日</span></div>
+        <div class="cal-g">
+          <div class="cal-d out">28</div><div class="cal-d out">29</div><div class="cal-d out">30</div>
+          <div class="cal-d">1</div><div class="cal-d">2</div><div class="cal-d we">3</div><div class="cal-d we">4</div>
+          <div class="cal-d">5</div><div class="cal-d">6</div><div class="cal-d">7</div><div class="cal-d">8</div>
+          <div class="cal-d">9</div><div class="cal-d">10</div><div class="cal-d">11</div><div class="cal-d">12</div>
+          <div class="cal-d">13</div><div class="cal-d">14</div><div class="cal-d">15</div><div class="cal-d">16</div>
+          <div class="cal-d"><b>17</b><div class="dot y"></div></div><div class="cal-d">18</div><div class="cal-d">19</div>
+          <div class="cal-d">20</div><div class="cal-d">21</div><div class="cal-d">22</div><div class="cal-d"><b>23</b><div class="dot y"></div></div>
+          <div class="cal-d on we">24<div class="dot"></div></div><div class="cal-d we">25<div class="dot"></div></div>
+          <div class="cal-d">26</div><div class="cal-d">27</div><div class="cal-d">28</div><div class="cal-d">29</div>
+          <div class="cal-d">30</div><div class="cal-d">31</div><div class="cal-d out">1</div><div class="cal-d out">2</div>
+          <div class="cal-d out">3</div><div class="cal-d out">4</div><div class="cal-d out">5</div><div class="cal-d out">6</div>
+        </div>
+        <div class="cal-lg">
+          <span><i style="background:var(--primary)"></i>考试</span>
+          <span><i style="background:var(--secondary)"></i>提醒</span>
+          <span><i style="background:var(--accent)"></i>成绩/论文</span>
+        </div>
+      </div>
+
+      <div class="cd">
+        <div class="cd-l">🔥 10月24日 上午 9:00-11:30</div>
+        <div class="cd-n" style="font-size:26px">3 <small>门开考</small></div>
+        <div class="cd-s">00023 高等数学(工本) · 13000 英语(专升本) · 02324 离散数学</div>
+      </div>
+
+      <div class="sec-title">10月25日 下午 14:30-17:00</div>
+      <div class="evt" onclick="go('p3')">
+        <div class="evt-d"><b class="num">25</b><span>10月</span></div>
+        <div style="flex:1"><div class="evt-t">13003 数据结构与算法 + 13015 计算机系统原理 + 13009 数据库原理与技术</div>
+        <div class="evt-s">下午 14:30-17:00 · 广州市 · 考场待分配</div></div>
+      </div>
+
+      <div class="sec-title">待办提醒</div>
+      <div class="evt" style="border-left:3.4px solid var(--secondary)">
+        <div class="evt-d" style="background:#FFF4DC"><b class="num" style="color:var(--warn)">17</b><span style="color:var(--warn)">10月</span></div>
+        <div style="flex:1"><div class="evt-t">考前 7 天提醒 · 高等数学(工本)</div><div class="evt-s">20:00 推送 · 建议此时完成三轮刷题</div></div>
+      </div>
+      <div class="evt" style="border-left:3.4px solid var(--secondary)">
+        <div class="evt-d" style="background:#FFF4DC"><b class="num" style="color:var(--warn)">23</b><span style="color:var(--warn)">10月</span></div>
+        <div style="flex:1"><div class="evt-t">考前 1 天提醒 · 3 门科目</div><div class="evt-s">20:00 推送 · 提醒带好证件与计算器</div></div>
+      </div>
+      <div class="evt" style="border-left:3.4px solid var(--accent)">
+        <div class="evt-d" style="background:#E4F5EC"><b class="num" style="color:#3F8B66">08</b><span style="color:#3F8B66">10月</span></div>
+        <div style="flex:1"><div class="evt-t">⏰ 华师秋季学位申请截止</div><div class="evt-s">均分≥70 + 论文答辩≥70 + 学位外语合格</div></div>
+      </div>
+
+      <div class="card" style="margin-top:14px;background:linear-gradient(120deg,#FFF6E8,#FFEFE0)">
+        <div class="card-t" style="color:#A87038">✨ 考科规划器</div>
+        <div style="font-size:12.5px;color:#BC8B52;line-height:1.7">按你当前进度，最短 <b style="color:#E8853F">3 轮</b> 可毕业。<br>建议下一轮（2027年1月）报考：数据结构与算法 + 计算机系统原理（避开高等数学同轮，压力更小）</div>
+        <button class="btn btn-p btn-full" style="margin-top:12px" onclick="go('p9')">查看完整规划方案 ›</button>
+      </div>
+    </div>
+    <div class="page-nav">
+      <div class="navbtn" onclick="go('p1')"><span class="ic">🏠</span>首页</div>
+      <div class="navbtn" onclick="go('p2')"><span class="ic">📚</span>科目</div>
+      <div class="navbtn on" onclick="go('p5')"><span class="ic">🗓</span>日历</div>
+      <div class="navbtn" onclick="go('p7')"><span class="ic">🎓</span>学位</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ P6 变动详情 ============ -->
+<div class="stage">
+  <div class="stage-label">⑥ 变动预警详情</div>
+  <div class="phone">
+    <div class="statusbar"><span class="num">9:41</span><div class="notch"></div><span>📶 🔋</span></div>
+    <div class="page">
+      <div class="appbar">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="backbtn" onclick="go('p1')">‹</div><b style="font-size:16px">变动详情</b>
+        </div>
+      </div>
+      <div class="alert" style="margin-bottom:14px">
+        <div class="ai">🔴</div>
+        <div style="flex:1"><div class="alert-t">高风险变动 · 需确认</div><div class="alert-s">检测时间：2026-10-01 09:14 · 来源：广东省教育考试院</div></div>
+      </div>
+      <div class="card">
+        <div style="font-size:16px;font-weight:800;line-height:1.45;margin-bottom:8px">2026年10月自考开考课程考试时间安排表发布</div>
+        <div style="font-size:12px;color:var(--t2);line-height:1.7">原文来源：广东省教育考试院官网<br>抓取时间：2026-10-01 09:12<br><a style="color:var(--primary)">查看原文 ›</a></div>
+      </div>
+
+      <div class="sec-title">对你的影响（3 项）</div>
+      <div class="cmpbox">
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px">① 考试时间调整</div>
+        <div class="dif">
+          <div class="dif-b"><div class="dif-t">02324 离散数学</div>
+          <div class="dif-old">原定 10月18日 下午</div><div class="dif-new">→ 10月24日 上午 9:00</div></div>
+        </div>
+        <div class="dif">
+          <div class="dif-b"><div class="dif-t">13005 软件工程</div>
+          <div class="dif-old">原定 10月25日 上午</div><div class="dif-new">→ 10月24日 下午 14:30</div></div>
+        </div>
+        <div class="dif">
+          <div class="dif-b"><div class="dif-t">03344 信息与网络安全管理</div>
+          <div class="dif-old">10月考期不开考</div><div class="dif-new">→ 顺延至 2027年1月</div></div>
+        </div>
+      </div>
+      <div class="cmpbox">
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px">② 加考课程提示</div>
+        <div style="font-size:12.5px;color:var(--t2);line-height:1.7">你的前置学历为「非计算机类专科」，按专业计划需<b style="color:var(--t1)">加考 2 门</b>（201/202 课程组）。请确认你的加考课程已在学考计划内。</div>
+        <button class="btn btn-g btn-full" style="margin-top:11px" onclick="go('p2')">查看我的加考科目 ›</button>
+      </div>
+      <div class="cmpbox">
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px">③ 学位政策提醒</div>
+        <div style="font-size:12.5px;color:var(--t2);line-height:1.7">华师明确：<b style="color:var(--t1)">2025年9月后获颁毕业证者，论文须答辩且总评≥70分</b>。你的毕业时间预计 2027-04，需提前规划论文。</div>
+      </div>
+
+      <div class="notice" style="margin-top:14px">
+        <div class="notice-h">🤔 建议你现在做</div>
+        <ul>
+          <li>确认 10 月报考的 5 门科目时间是否冲突</li>
+          <li>离散数学时间提前，需重新安排复习计划</li>
+          <li>信息与网络安全管理顺延，建议加入 2027年1月考期</li>
+        </ul>
+      </div>
+      <div style="display:flex;gap:9px;margin-top:14px">
+        <button class="btn btn-o" style="flex:1" onclick="go('p9')">调整报考计划</button>
+        <button class="btn btn-p" style="flex:1" onclick="toast('已确认知晓 ✓')">我已知晓</button>
+      </div>
+    </div>
+    <div class="page-nav">
+      <div class="navbtn on" onclick="go('p1')"><span class="ic">🏠</span>首页</div>
+      <div class="navbtn" onclick="go('p2')"><span class="ic">📚</span>科目</div>
+      <div class="navbtn" onclick="go('p4')"><span class="ic">📰</span>资讯</div>
+      <div class="navbtn" onclick="go('p7')"><span class="ic">🎓</span>学位</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ P7 学位 ============ -->
+<div class="stage">
+  <div class="stage-label">⑦ 学位看板 + 论文</div>
+  <div class="phone">
+    <div class="statusbar"><span class="num">9:41</span><div class="notch"></div><span>📶 🔋</span></div>
+    <div class="page">
+      <div class="appbar"><h1>我的学位</h1><div class="iconbtn" onclick="toast('已生成学位自查清单 🗒')">📤</div></div>
+      <div class="dg">
+        <div class="dg-l">学位课程平均成绩</div>
+        <div class="gauge">
+          <svg viewBox="0 0 200 100">
+            <path d="M20 95 A80 80 0 0 1 180 95" fill="none" stroke="#CBE7D9" stroke-width="15" stroke-linecap="round"/>
+            <path d="M20 95 A80 80 0 0 1 180 95" fill="none" stroke="#8FC9A9" stroke-width="15" stroke-linecap="round"
+              stroke-dasharray="234" stroke-dashoffset="60"/>
+            <line x1="103" y1="95" x2="103" y2="24" stroke="#F0657A" stroke-width="2.4" stroke-dasharray="4 3"/>
+            <text x="103" y="19" text-anchor="middle" font-size="10" fill="#F0657A" font-weight="700">70分目标线</text>
+          </svg>
+        </div>
+        <div class="dg-n num">74.2</div>
+        <div class="dg-s">已达标 ✓ · 超出目标 4.2 分 · 6 门课程参与计算</div>
+      </div>
+
+      <div class="sim">
+        <div class="card-t" style="margin-bottom:2px">🎯 均分模拟器<span class="more">拖动试试</span></div>
+        <div style="font-size:12px;color:var(--t2)">假设下次「高等数学(工本)」考 <b class="num" id="simV" style="color:var(--primary);font-size:15px">70</b> 分，学位均分将变为：</div>
+        <input type="range" class="slider" id="simS" min="0" max="100" value="70" style="--pct:70%">
+        <div class="sim-r"><span>0 分</span><span>均分 → <b class="num" id="simR">73.6</b></span><span>100 分</span></div>
+      </div>
+
+      <div class="sec-title">申请条件自查（3/4 达标）</div>
+      <div class="cond">
+        <div class="cond-i ok">✓</div>
+        <div style="flex:1"><div class="cond-t">课程平均分 ≥ 70 分</div>
+        <div class="cond-s">当前 74.2 分 · 加权计算（高等数学等 10 学分课程权重更高）</div></div>
+      </div>
+      <div class="cond">
+        <div class="cond-i no">?</div>
+        <div style="flex:1"><div class="cond-t">学位外语成绩合格</div>
+        <div class="cond-s">6 种途径可选，最省事：自考「英语(专升本)」统考合格即可（13000 · 10/24 开考）<br><span style="color:var(--primary);font-weight:600">👉 你已报名这门，考过即自动达标</span></div></div>
+      </div>
+      <div class="cond">
+        <div class="cond-i no">?</div>
+        <div style="flex:1"><div class="cond-t">毕业论文答辩 ≥ 70 分</div>
+        <div class="cond-s">2025年9月后毕业者适用 · 预计 2027-04 毕业，需提前启动</div></div>
+      </div>
+      <div class="cond">
+        <div class="cond-i no">?</div>
+        <div style="flex:1"><div class="cond-t">毕业证书已取得</div>
+        <div class="cond-s">全部课程通过后申请 · 距预计毕业还有 6 个月</div></div>
+      </div>
+      <div class="notice" style="margin-top:4px">
+        <div class="notice-h">⏰ 学位申请时间轴（华师）</div>
+        <ul>
+          <li>每年 <b>4 月 / 10 月</b> 两次申报</li>
+          <li>申请时限：毕业证书签发 <b>6 个月内</b></li>
+          <li>最近一次：2026-10-08 截止（未达标，下次 2027-04）</li>
+        </ul>
+      </div>
+
+      <div class="sec-title">📝 毕业论文看板</div>
+      <div class="thesis">
+        <div class="th-t">当前阶段：未启动 <span class="chip c-wait" style="margin-left:auto">建议 2027-01 启动</span></div>
+        <div class="steps">
+          <div class="step cur"><div class="step-c">1</div><div class="step-l">方向<br>选择</div></div>
+          <div class="step"><div class="step-c">2</div><div class="step-l">报名<br>立项</div></div>
+          <div class="step"><div class="step-c">3</div><div class="step-l">开题<br>报告</div></div>
+          <div class="step"><div class="step-c">4</div><div class="step-l">论文<br>撰写</div></div>
+          <div class="step"><div class="step-c">5</div><div class="step-l">查重<br>答辩</div></div>
+          <div class="step"><div class="step-c">6</div><div class="step-l">成绩<br>录入</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-t">💡 论文题目库 · 计算机方向<span class="more">全部 42 个 ›</span></div>
+        <div class="tdir">
+          <div class="emoji" style="font-size:22px">🎓</div>
+          <div class="tdir-b"><div class="tdir-t">基于大语言模型的自适应学习路径推荐系统设计与实现</div>
+          <div class="tdir-m"><span class="chip c-wait">AI 方向</span><span class="chip c-wait">热门</span><span class="chip c-wait">工程量大</span></div></div>
+          <div class="tdir-r"><div class="stars">★★★★★</div><div class="heat">🔥 298</div></div>
+        </div>
+        <div class="tdir">
+          <div class="emoji" style="font-size:22px">📊</div>
+          <div class="tdir-b"><div class="tdir-t">面向中小企业的数据中台架构设计与性能优化实践</div>
+          <div class="tdir-m"><span class="chip c-wait">系统架构</span><span class="chip c-wait">好写</span></div></div>
+          <div class="tdir-r"><div class="stars">★★★★☆</div><div class="heat">🔥 176</div></div>
+        </div>
+        <div class="tdir">
+          <div class="emoji" style="font-size:22px">🔐</div>
+          <div class="tdir-b"><div class="tdir-t">基于零信任架构的高校网络安全防护体系研究</div>
+          <div class="tdir-m"><span class="chip c-wait">网络安全</span><span class="chip c-wait">理论性强</span></div></div>
+          <div class="tdir-r"><div class="stars">★★★☆☆</div><div class="heat">🔥 132</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="page-nav">
+      <div class="navbtn" onclick="go('p1')"><span class="ic">🏠</span>首页</div>
+      <div class="navbtn" onclick="go('p2')"><span class="ic">📚</span>科目</div>
+      <div class="navbtn" onclick="go('p5')"><span class="ic">🗓</span>日历</div>
+      <div class="navbtn on" onclick="go('p7')"><span class="ic">🎓</span>学位</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ P8 建档向导 ============ -->
+<div class="stage">
+  <div class="stage-label">⑧ 建档向导（院校/专业选择）</div>
+  <div class="phone">
+    <div class="statusbar"><span class="num">9:41</span><div class="notch"></div><span>📶 🔋</span></div>
+    <div class="page">
+      <div class="appbar"><h1>3 分钟建档</h1><div style="font-size:11.5px;color:var(--t3)">步骤 2/2</div></div>
+      <div class="hero" style="background:linear-gradient(135deg,#FFD9A0,#FFA98F);padding:15px">
+        <div style="font-size:13.5px;font-weight:700">已选：广东省 · 广州市</div>
+        <div style="font-size:11.5px;opacity:.9;margin-top:3px">现在选择主考院校和专业，系统会自动生成你的考纲</div>
+      </div>
+
+      <div class="sec-title">🏫 主考院校</div>
+      <div class="pill-row">
+        <div class="pill on">华南师范大学</div><div class="pill">深圳大学</div><div class="pill">华南理工大学</div>
+        <div class="pill">广东财经大学</div><div class="pill">广东外语外贸大学</div><div class="pill">暨南大学</div>
+        <div class="pill" style="opacity:.6">🔍 支持拼音 scnu 搜索</div>
+      </div>
+
+      <div class="sec-title">📚 专业（可搜索代码或名称）</div>
+      <div class="wiz on">
+        <div class="wiz-t">080901 · 计算机科学与技术</div>
+        <div class="wiz-s">专升本 · 工学门类 · 可申请学士学位</div>
+        <div class="pill-row" style="margin-top:9px">
+          <span class="chip c-done">✓ 已选</span><span class="chip c-wait">热门 92% 报考</span>
+        </div>
+      </div>
+      <div class="wiz">
+        <div class="wiz-t">080901 · 计算机科学与技术</div>
+        <div class="wiz-s">深圳大学课程组 · 课程设置略有不同</div>
+      </div>
+      <div class="wiz">
+        <div class="wiz-t">080902 · 软件工程</div>
+        <div class="wiz-s">专升本 · 工学门类</div>
+      </div>
+      <div class="wiz">
+        <div class="wiz-t">080901 · 计算机科学与技术（信息管理方向）</div>
+        <div class="wiz-s">华南师范大学 · 计算机信息管理课程组</div>
+      </div>
+
+      <div class="sec-title">📋 生成的考纲预览</div>
+      <div class="plancard">
+        <div class="pc-h">
+          <div>
+            <div class="pc-code">080901</div>
+            <div class="pc-n">计算机科学与技术</div>
+            <div class="pc-s">华南师范大学 · 专升本 · 2026 版考纲</div>
+          </div>
+          <span class="chip c-done">可授学位</span>
+        </div>
+        <div class="pc-stats">
+          <div class="pc-s1"><b class="num">16</b><span>必考课程</span></div>
+          <div class="pc-s1"><b class="num">75</b><span>总学分</span></div>
+          <div class="pc-s1"><b class="num">70</b><span>学位均分线</span></div>
+        </div>
+        <div style="font-size:12.5px;color:var(--t2);line-height:1.85">
+          <b style="color:var(--t1)">思政类</b>　15040 习思想(3) · 15043 近代史(3) · 15044 马原(3)<br>
+          <b style="color:var(--t1)">公共基础</b>　00023 高等数学工本(10) · 13000 英语专升本(7)<br>
+          <b style="color:var(--t1)">专业核心</b>　02324 离散数学 · 13003 数据结构与算法<br>
+          　　　　　　13013 高级语言程序设计 · 13015 计算机系统原理<br>
+          　　　　　　13180 操作系统 · 13005 软件工程 · 13009 数据库原理与技术<br>
+          <b style="color:var(--t1)">专业选修</b>　03344 信息与网络安全管理 · 08074 计算机高级程序设计<br>
+          　　　　　　13011 人工智能与大数据<br>
+          <b style="color:var(--t1)">实践环节</b>　13004 / 13014 / 13006 / 08075 / 03345 实践考核<br>
+          　　　　　　11689 毕业论文
+        </div>
+        <div style="margin-top:12px;padding-top:11px;border-top:1px solid var(--line);font-size:11.5px;color:var(--t3)">
+          ⚠️ 你的前置学历需加考 2 门（201/202 课程组）<br>
+          ✅ 数据核验：2026-10-01 · 以广东省教育考试院公告为准
+        </div>
+      </div>
+
+      <div class="sec-title">📚 前置学历（用于加考判定）</div>
+      <div class="pill-row">
+        <div class="pill">计算机类专科</div><div class="pill on">非计算机类专科</div><div class="pill">成人/其他本科</div>
+      </div>
+      <div class="wiz" style="margin-top:10px;border-color:#FFD9B8;background:#FFFAF4">
+        <div class="wiz-t" style="color:#B8801F">⚠️ 需加考 2 门（201 / 202 课程组）</div>
+        <div class="wiz-s" style="color:#C79A5A">若为计算机类专业专科毕业，可直接报考，无需加考</div>
+      </div>
+
+      <div style="display:flex;gap:9px;margin:16px 0 8px">
+        <button class="btn btn-o" style="flex:1" onclick="toast('已收藏该专业 ⭐')">收藏</button>
+        <button class="btn btn-p" style="flex:2" onclick="toast('建档成功，生成考纲与日历 🎉')">确认建档，开始备考</button>
+      </div>
+    </div>
+    <div class="page-nav">
+      <div class="navbtn on" onclick="go('p1')"><span class="ic">🏠</span>首页</div>
+      <div class="navbtn" onclick="go('p2')"><span class="ic">📚</span>科目</div>
+      <div class="navbtn" onclick="go('p5')"><span class="ic">🗓</span>日历</div>
+      <div class="navbtn" onclick="go('p7')"><span class="ic">🎓</span>学位</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ P9 考科规划 ============ -->
+<div class="stage">
+  <div class="stage-label">⑨ 考科规划器</div>
+  <div class="phone">
+    <div class="statusbar"><span class="num">9:41</span><div class="notch"></div><span>📶 🔋</span></div>
+    <div class="page">
+      <div class="appbar">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="backbtn" onclick="go('p5')">‹</div><b style="font-size:16px">考科规划</b>
+        </div>
+      </div>
+      <div class="hero" style="background:linear-gradient(135deg,#A8DCC4,#7FC4A6)">
+        <div style="font-size:12px;opacity:.95">最短毕业路径</div>
+        <div style="font-size:32px;font-weight:800;letter-spacing:-1px;margin:2px 0">还需 3 轮考期</div>
+        <div style="font-size:11.5px;opacity:.95">按 2026-10 / 2027-01 / 2027-04 三轮规划，2027年4月可申请毕业</div>
+      </div>
+
+      <div class="sec-title">第 1 轮 · 2026年10月（已报名 5 门）</div>
+      <div class="li"><div class="li-t"><div><div class="li-n" style="font-size:13.5px">10/24 上午 · 00023 高等数学(工本) · 13000 英语(专升本) · 02324 离散数学</div>
+        <div class="li-c">🔥 难度高，建议全力备考</div></div><span class="chip c-ing">已报名</span></div></div>
+      <div class="li"><div class="li-t"><div><div class="li-n" style="font-size:13.5px">10/25 下午 · 13003 数据结构与算法 · 13015 计算机系统原理 · 13009 数据库原理与技术</div>
+        <div class="li-c">⚠️ 与补考科目同日，注意时间</div></div><span class="chip c-ing">已报名</span></div></div>
+
+      <div class="sec-title">第 2 轮 · 2027年1月（推荐 4 门）</div>
+      <div class="li" style="border-left:3.4px solid var(--accent)">
+        <div class="li-t"><div><div class="li-n">13005 软件工程</div><div class="li-c">3 学分 · 笔试 + 实践</div></div>
+        <span class="chip c-done">推荐</span></div>
+        <div class="li-m"><span style="font-size:11.5px;color:var(--t2)">💡 你自评「中等」，与高数错开压力小</span></div>
+      </div>
+      <div class="li" style="border-left:3.4px solid var(--accent)">
+        <div class="li-t"><div><div class="li-n">03344 信息与网络安全管理</div><div class="li-c">3 学分 · 笔试 + 实践 · 本轮顺延科目</div></div><span class="chip c-done">推荐</span></div>
+        <div class="li-m"><span style="font-size:11.5px;color:var(--t2)">💡 10月未开考，此轮必考</span></div>
+      </div>
+      <div class="li" style="border-left:3.4px solid var(--accent)">
+        <div class="li-t"><div><div class="li-n">08074 计算机高级程序设计</div><div class="li-c">3 学分 · 笔试 + 实践</div></div><span class="chip c-done">推荐</span></div>
+        <div class="li-m"><span style="font-size:11.5px;color:var(--t2)">💡 与 13013 高级语言程序设计内容相近，一起备考更省力</span></div>
+      </div>
+      <div class="li" style="border-left:3.4px solid var(--primary)">
+        <div class="li-t"><div><div class="li-n">13009 数据库原理与技术</div><div class="li-c">4 学分 · 建议补考重考（上次未及格）</div></div><span class="chip c-fail">建议补考</span></div>
+        <div class="li-m"><span style="font-size:11.5px;color:var(--t2)">📈 重考到 75 分可拉均分 +0.5</span></div>
+      </div>
+
+      <div class="sec-title">第 3 轮 · 2027年4月（毕业轮）</div>
+      <div class="li"><div class="li-t"><div><div class="li-n">13011 人工智能与大数据</div><div class="li-c">6 学分 · 笔试</div></div><span class="chip c-wait">待考</span></div>
+        <div class="li-m"><span style="font-size:11.5px;color:var(--t2)">📅 须在 2027-03 报名截止前完成</div></div>
+      <div class="li"><div class="li-t"><div><div class="li-n">加考 201 + 加考 202</div><div class="li-c">前置学历非计算机类需加考</div></div><span class="chip c-wait">待考</span></div></div>
+      <div class="li" style="border-left:3.4px solid var(--secondary)">
+        <div class="li-t"><div><div class="li-n">11689 毕业论文</div><div class="li-c">实践 · 不计学分</div></div><span class="chip c-ing">毕业环节</span></div>
+        <div class="li-m"><span style="font-size:11.5px;color:var(--t2)">💡 建议 2026-12 开始选方向，2027-01 立项</span></div>
+      </div>
+
+      <div class="card" style="margin-top:14px;background:linear-gradient(120deg,#FFF6E8,#FFEFE0)">
+        <div class="card-t" style="color:#A87038">⚠️ 风险提示</div>
+        <div style="font-size:12.5px;color:#BC8B52;line-height:1.75">
+          · 2027-04 是毕业截止轮，<b>不可延期</b>，需预留 1 门缓冲<br>
+          · 高等数学 10 学分权重高，若挂科将影响均分与毕业时间<br>
+          · 毕业论文需提前 3-4 个月启动，勿压到最后
+        </div>
+      </div>
+    </div>
+    <div class="page-nav">
+      <div class="navbtn" onclick="go('p1')"><span class="ic">🏠</span>首页</div>
+      <div class="navbtn" onclick="go('p2')"><span class="ic">📚</span>科目</div>
+      <div class="navbtn on" onclick="go('p5')"><span class="ic">🗓</span>日历</div>
+      <div class="navbtn" onclick="go('p7')"><span class="ic">🎓</span>学位</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 弹层（挂在 P3 上） ============ -->
+<div class="phone" style="display:none" id="sheetPhone">
+  <div class="statusbar"><span class="num">9:41</span><div class="notch"></div><span>📶 🔋</span></div>
+  <div class="page" style="filter:blur(2px);opacity:.5"></div>
+  <div class="mask" id="mask" onclick="if(event.target===this)closeSheet()">
+    <div class="sheet">
+      <div class="sh-bar"></div>
+      <div class="sh-h"><b id="shTitle">录入成绩</b><div class="iconbtn" onclick="closeSheet()">✕</div></div>
+      <div id="shBody"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const PAGES={p1:'① 首页',p2:'② 科目',p3:'③ 详情',p4:'④ 资讯',p5:'⑤ 日历',p6:'⑥ 变动',p7:'⑦ 学位',p8:'⑧ 建档',p9:'⑨ 规划'};
+function go(id,scrollTop){
+  document.querySelectorAll('.phone').forEach(p=>{
+    const pg=p.querySelector('.page'); if(pg) pg.scrollTop=0;
+  });
+  document.querySelectorAll('.stage').forEach(s=>{
+    const ph=s.querySelector('.phone');
+    const want=Object.keys(PAGES).find(k=>PAGES[k].split(' ')[1]&&s.querySelector('.stage-label').textContent.includes(PAGES[k].split(' ')[1]));
+    if(ph) ph.style.display = (s.querySelector('.stage-label').textContent.includes((PAGES[id]||'').split(' ')[1]))?'flex':'none';
+  });
+  window.scrollTo(0,0);
+}
+function toast(msg){
+  let t=document.getElementById('tg');
+  if(!t){t=document.createElement('div');t.id='tg';document.body.appendChild(t);}
+  t.textContent='✨ '+msg;
+  t.style.cssText='position:fixed;left:50%;top:26px;transform:translateX(-50%);background:rgba(74,63,60,.94);color:#fff;padding:11px 20px;border-radius:999px;font-size:13px;font-weight:600;z-index:999;box-shadow:0 6px 22px rgba(0,0,0,.24);transition:.3s;white-space:nowrap';
+  setTimeout(()=>{t.style.opacity='0';t.style.top='18px'},1700);
+  setTimeout(()=>t.remove(),2100);
+}
+function openSheet(type){
+  const ph=document.getElementById('sheetPhone');
+  ph.style.cssText='display:flex;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:900;background:transparent;box-shadow:none;border-radius:38px';
+  ph.style.pointerEvents='none';
+  const mask=document.getElementById('mask');
+  mask.style.cssText+=';position:fixed;inset:0;border-radius:38px';
+  const sh=mask.querySelector('.sheet');
+  sh.style.cssText+=';max-height:70vh';
+  document.getElementById('shTitle').textContent=type==='score'?'录入成绩':'编辑科目信息';
+  document.getElementById('shBody').innerHTML = type==='score' ? scoreSheet() : editSheet();
+  if(type==='score')bindScore();
+  setTimeout(()=>mask.classList.add('on'),30);
+}
+function closeSheet(){
+  document.getElementById('mask').classList.remove('on');
+  setTimeout(()=>{document.getElementById('sheetPhone').style.display='none';},320);
+}
+function scoreSheet(){
+  return `
+  <div style="font-size:12px;color:var(--t2);text-align:center;margin-bottom:6px">高等数学(工本) · 00023</div>
+  <div style="text-align:center;margin-bottom:4px">
+    <input type="number" class="inp sc-input num" id="scIn" placeholder="?" oninput="scHint()" maxlength="3">
+  </div>
+  <div class="sc-hint" id="scH">输入分数，实时看到对学位均分的影响</div>
+  <div style="margin:16px 0 10px;font-size:12.5px;font-weight:700">考试日期</div>
+  <div class="pill-row" style="margin-top:0">
+    <div class="pill on">2026-10-24</div><div class="pill">2026-10-25</div><div class="pill">手动选择</div>
+  </div>
+  <div style="margin:14px 0 10px;font-size:12.5px;font-weight:700">考季</div>
+  <div class="opts"><div class="opt on" onclick="pick(this)">2026-10 正常考</div><div class="opt" onclick="pick(this)">2026-08 补考</div><div class="opt" onclick="pick(this)">免考</div></div>
+  <div style="margin:14px 0 8px;font-size:12.5px;font-weight:700">备注（选填）</div>
+  <textarea class="inp" rows="2" placeholder="例如：考场上题量偏大，最后一道大题没写完"></textarea>
+  <button class="btn btn-p btn-full" style="margin-top:18px" onclick="saveScore()">保存成绩</button>
+  <div style="font-size:10.5px;color:var(--t3);text-align:center;margin-top:10px;line-height:1.6">保存后将自动更新：科目状态 · 毕业进度环<br>学位均分 · 预计毕业时间</div>`;
+}
+function editSheet(){
+  return `
+  <div style="font-size:12px;color:var(--t2);margin-bottom:8px">课程代码 00023 · 高等数学(工本)</div>
+  <div style="margin:12px 0 8px;font-size:12.5px;font-weight:700">我的备考状态</div>
+  <div class="opts"><div class="opt" onclick="pick(this)">未开始</div><div class="opt" onclick="pick(this)">已报名</div><div class="opt on" onclick="pick(this)">备考中</div><div class="opt" onclick="pick(this)">已考待出分</div><div class="opt" onclick="pick(this)">已通过</div></div>
+  <div style="margin:16px 0 8px;font-size:12.5px;font-weight:700">预计考试日期</div>
+  <div class="pill-row" style="margin-top:0"><div class="pill on">2026-10-24</div><div class="pill">2027-01-17</div><div class="pill">2027-04-18</div><div class="pill">手动录入</div></div>
+  <div style="margin:16px 0 8px;font-size:12.5px;font-weight:700">提前提醒</div>
+  <div class="rm" style="border:none;padding:6px 0"><div class="rm-i">📖</div><div><div class="rm-t">考前 7 天</div><div class="rm-s num">2026-10-17</div></div><div class="sw on" onclick="this.classList.toggle('on')"></div></div>
+  <div class="rm" style="border:none;padding:6px 0"><div class="rm-i">🔥</div><div><div class="rm-t">考前 1 天</div><div class="rm-s num">2026-10-23</div></div><div class="sw on" onclick="this.classList.toggle('on')"></div></div>
+  <div class="rm" style="border:none;padding:6px 0"><div class="rm-i">📊</div><div><div class="rm-t">成绩公布</div><div class="rm-s num">预计 2026-12</div></div><div class="sw on" onclick="this.classList.toggle('on')"></div></div>
+  <div style="margin:16px 0 8px;font-size:12.5px;font-weight:700">考试注意事项（自定义）</div>
+  <textarea class="inp" rows="3" placeholder="例如：携带无存储功能计算器，考前一天做一套真题">允许使用普通函数计算器，禁止智能计算器
+考点：广州市 XX 中学
+</textarea>
+  <button class="btn btn-p btn-full" style="margin-top:18px" onclick="closeSheet();toast('已保存 ✓')">保存修改</button>`;
+}
+function bindScore(){
+  const i=document.getElementById('scIn');
+  if(i) setTimeout(()=>i.focus(),380);
+}
+function scHint(){
+  const v=parseFloat(document.getElementById('scIn').value);
+  const h=document.getElementById('scH');
+  if(isNaN(v)||v<0){h.textContent='输入分数，实时看到对学位均分的影响';h.style.color='var(--t3)';return;}
+  if(v<60){h.textContent='未及格 · 科目状态将标记为「待补考」';h.style.color='var(--danger)';return;}
+  const now=73.6, base=10, tot=75-10;
+  const nv=((74.2*(75-10)+v*10)/75);
+  const d=nv-now;
+  h.textContent=`✓ 预计均分 ${nv.toFixed(1)}（${d>=0?'↑':'↓'} ${Math.abs(d).toFixed(1)}）· 距学位线还差 ${(nv-70).toFixed(1)} 分`;
+  h.style.color= nv>=70?'#3F8B66':'var(--danger)';
+}
+function saveScore(){
+  const v=document.getElementById('scIn').value;
+  if(!v||isNaN(v)||v<0||v>100){toast('请输入 0-100 的分数');return;}
+  closeSheet();
+  setTimeout(()=>toast(`已记录 ${v} 分！均分更新，学位${v>=60?'达标 ✓':'需补考'}`),350);
+}
+function pick(el){
+  el.parentElement.querySelectorAll('.opt,.pill').forEach(x=>x.classList.remove('on'));
+  el.classList.add('on');
+}
+const simS=document.getElementById('simS');
+if(simS){
+  const upd=()=>{
+    const v=+simS.value;
+    const nv=((74.2*65+v*10)/75);
+    document.getElementById('simV').textContent=v;
+    document.getElementById('simR').textContent=nv.toFixed(1);
+    simS.style.setProperty('--pct',v+'%');
+  };
+  simS.addEventListener('input',upd); upd();
+}
+</script>
+</body>
+</html>

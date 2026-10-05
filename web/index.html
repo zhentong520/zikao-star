@@ -1,0 +1,1327 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#FFF9F5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="自考星">
+<title>自考星</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icon-180.png">
+<link rel="icon" href="/icon.svg">
+<style>
+:root{
+  --primary:#FF8A7A;--primary-l:#FFD6CC;--primary-xl:#FFF0EC;
+  --secondary:#FFC86B;--accent:#8FC9A9;--info:#7FB8E6;--danger:#F0657A;--warn:#F0A85A;
+  --bg:#FFF9F5;--surface:#FFFFFF;--line:#F5EAE4;
+  --t1:#4A3F3C;--t2:#8C7B76;--t3:#B8A8A3;
+  --grad:linear-gradient(135deg,#FFB199 0%,#FF8A7A 100%);
+  --grad2:linear-gradient(135deg,#FFD9A0 0%,#FFB26B 100%);
+  --sh:0 4px 16px rgba(255,138,122,.10);
+  --sh-l:0 8px 28px rgba(255,138,122,.16);
+  --safe-t:env(safe-area-inset-top,0px);
+  --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:"PingFang SC","HarmonyOS Sans","Microsoft YaHei",-apple-system,sans-serif;
+  background:#EFE6E1;color:var(--t1);line-height:1.6;overscroll-behavior-y:none}
+.num{font-variant-numeric:tabular-nums}
+#app{max-width:480px;margin:0 auto;background:var(--bg);min-height:100vh;position:relative;
+  box-shadow:0 0 40px rgba(0,0,0,.08);display:flex;flex-direction:column}
+
+/* 状态栏 */
+.sbar{height:calc(var(--safe-t) + 30px);display:flex;align-items:flex-end;justify-content:space-between;
+  padding:0 20px 5px;font-size:12px;font-weight:600;color:var(--t1);flex:0 0 auto}
+
+/* 页面 */
+.screen{display:none;flex:1;flex-direction:column;min-height:0}
+.screen.on{display:flex}
+.scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 16px 20px;overscroll-behavior-y:contain}
+.scroll::-webkit-scrollbar{display:none}
+
+/* 底部导航 */
+.tabbar{flex:0 0 auto;background:rgba(255,255,255,.94);backdrop-filter:blur(20px);
+  border-top:1px solid var(--line);display:flex;
+  padding-bottom:var(--safe-b);padding-top:6px;z-index:20}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;
+  color:var(--t3);cursor:pointer;user-select:none;padding:3px 0 5px}
+.tab .ic{font-size:20px;line-height:1;transition:transform .25s}
+.tab.on{color:var(--primary);font-weight:600}
+.tab.on .ic{transform:translateY(-1px) scale(1.1)}
+
+/* 通用 */
+.appbar{display:flex;align-items:center;justify-content:space-between;padding:2px 0 14px;position:sticky;
+  top:0;background:var(--bg);z-index:15}
+.appbar h1{font-size:21px;font-weight:700;letter-spacing:-.3px}
+.appbar .sub{font-size:11.5px;color:var(--t3);margin-top:1px}
+.ib{width:34px;height:34px;border-radius:11px;background:var(--surface);box-shadow:var(--sh);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;border:none;color:var(--t1);flex:0 0 auto}
+.card{background:var(--surface);border-radius:20px;padding:15px;box-shadow:var(--sh);margin-bottom:11px}
+.card-t{font-size:14.5px;font-weight:700;display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}
+.card-t .more{font-size:11.5px;color:var(--t3);font-weight:400;cursor:pointer}
+.st{font-size:15.5px;font-weight:700;margin:18px 2px 9px;display:flex;align-items:center;gap:6px}
+.st::before{content:'';width:3px;height:14px;background:var(--grad);border-radius:2px;flex:0 0 3px}
+.st .tail{margin-left:auto;font-size:11px;color:var(--t3);font-weight:400}
+.chip{display:inline-flex;align-items:center;padding:2px 9px;border-radius:999px;font-size:10.5px;font-weight:600;white-space:nowrap}
+.c-wait{background:#F4EEEA;color:#9A8A85}
+.c-prep{background:var(--primary-l);color:#D2543F}
+.c-done{background:#DCF0E6;color:#3F8B66}
+.c-fail{background:#FFE0E5;color:#C93A50}
+.c-ing{background:#FFF0D4;color:#B8801F}
+.btn{padding:9px 17px;border-radius:999px;font-size:13px;font-weight:600;border:none;cursor:pointer;
+  font-family:inherit;transition:transform .15s;white-space:nowrap}
+.btn:active{transform:scale(.96)}
+.btn-p{background:var(--grad);color:#fff;box-shadow:0 3px 10px rgba(255,138,122,.32)}
+.btn-g{background:var(--primary-xl);color:var(--primary)}
+.btn-o{background:transparent;border:1.4px solid var(--primary);color:var(--primary)}
+.btn-f{background:transparent;border:1.4px solid var(--line);color:var(--t2)}
+.btn-full{width:100%;padding:13px;font-size:15px}
+.empty{text-align:center;padding:40px 20px;color:var(--t3);font-size:13px}
+.empty .e{font-size:44px;margin-bottom:10px;opacity:.5}
+
+/* Hero 进度 */
+.hero{background:var(--grad);border-radius:24px;padding:18px;color:#fff;
+  box-shadow:0 10px 26px rgba(255,138,122,.3);position:relative;overflow:hidden;margin-bottom:12px}
+.hero::after{content:'';position:absolute;right:-26px;top:-26px;width:112px;height:112px;background:rgba(255,255,255,.14);border-radius:50%}
+.hero::before{content:'';position:absolute;left:-14px;bottom:-28px;width:72px;height:72px;background:rgba(255,255,255,.1);border-radius:50%}
+.hero-h{display:flex;justify-content:space-between;align-items:flex-start;position:relative;z-index:2;gap:10px}
+.hero-h h3{font-size:15px;font-weight:700}
+.hero-h p{font-size:11px;opacity:.9;margin-top:2px}
+.ringwrap{display:flex;align-items:center;gap:16px;margin-top:12px;position:relative;z-index:2}
+.ring{width:96px;height:96px;flex:0 0 96px;position:relative}
+.ring svg{transform:rotate(-90deg)}
+.ringc{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ringc b{font-size:24px;font-weight:800;letter-spacing:-1px}
+.ringc span{font-size:9.5px;opacity:.88}
+.ringi{flex:1;display:flex;flex-direction:column;gap:6px}
+.ringi .r{display:flex;align-items:baseline;gap:4px}
+.ringi .r b{font-size:20px;font-weight:800}
+.ringi .r span{font-size:10.5px;opacity:.88}
+.ringi .d{font-size:10.5px;opacity:.9;line-height:1.5}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:11px}
+.g4c{background:var(--surface);border-radius:14px;padding:10px 4px;text-align:center;box-shadow:var(--sh)}
+.g4c b{display:block;font-size:16px;font-weight:800;letter-spacing:-.5px}
+.g4c span{font-size:9.5px;color:var(--t3)}
+.g4c.hl b{color:var(--primary)}
+
+/* 倒计时 */
+.cd{background:linear-gradient(135deg,#FFF3D9,#FFE4D0);border-radius:20px;padding:14px;box-shadow:var(--sh);
+  margin-bottom:11px;position:relative;overflow:hidden}
+.cd::after{content:'⏰';position:absolute;right:10px;bottom:-8px;font-size:54px;opacity:.16}
+.cd-l{font-size:10.5px;color:#B8801F;font-weight:600}
+.cd-n{font-size:32px;font-weight:800;color:#E8853F;letter-spacing:-1.5px;line-height:1.15}
+.cd-n small{font-size:13px;letter-spacing:0}
+.cd-s{font-size:11.5px;color:#A87038;margin-top:3px}
+
+/* 警示条 */
+.alert{background:linear-gradient(120deg,#FFF0F0,#FFE4E4);border-radius:14px;padding:12px 13px;margin-bottom:11px;
+  display:flex;gap:9px;align-items:center;border:1.4px solid #FFC4C4;cursor:pointer}
+.alert .ai{font-size:19px;flex:0 0 auto}
+.alert-t{font-size:12.5px;font-weight:700;color:#C93A50}
+.alert-s{font-size:10.5px;color:#D9707F;margin-top:1px}
+
+/* 横滑 */
+.hscroll{display:flex;gap:8px;overflow-x:auto;padding:2px 0 8px;margin:0 -16px;padding-left:16px;padding-right:16px}
+.hscroll::-webkit-scrollbar{display:none}
+.cchip{flex:0 0 auto;background:var(--surface);border-radius:14px;padding:10px 12px;box-shadow:var(--sh);
+  cursor:pointer;min-width:100px;border:1.6px solid transparent;transition:.15s}
+.cchip:active{transform:scale(.96)}
+.cchip .cc{font-size:9.5px;color:var(--t3);margin-bottom:2px}
+.cchip .cn{font-size:12px;font-weight:700;line-height:1.35;margin-bottom:4px;min-height:32px}
+.cchip .cs{font-size:10px;font-weight:600}
+
+/* 资讯 */
+.news{background:var(--surface);border-radius:14px;padding:12px;box-shadow:var(--sh);margin-bottom:8px;cursor:pointer;position:relative}
+.news:active{transform:scale(.985)}
+.news.bd{padding-left:30px}
+.news-rk{position:absolute;left:0;top:0;width:24px;height:24px;display:flex;align-items:center;justify-content:center;
+  font-size:11.5px;font-weight:800;color:#fff;background:var(--grad);border-radius:0 0 11px 0}
+.news-t{font-size:13px;font-weight:700;line-height:1.45;margin-bottom:5px}
+.news-m{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.news-src{font-size:10px;color:var(--t3)}
+.news-time{font-size:10px;color:var(--t3)}
+.tag{background:var(--primary-xl);color:var(--primary);padding:1.5px 6px;border-radius:999px;font-size:9.5px;font-weight:700}
+.tag-n{background:#E4F2FF;color:#3D87C4;padding:1.5px 6px;border-radius:999px;font-size:9.5px;font-weight:700}
+.tag-h{background:#FFECEC;color:#D9503F;padding:1.5px 6px;border-radius:999px;font-size:9.5px;font-weight:700}
+
+/* 鼓励 */
+.enc{background:linear-gradient(120deg,#FFF6E8,#FFEFE0);border-radius:20px;padding:13px 15px;
+  display:flex;align-items:center;gap:11px;box-shadow:var(--sh)}
+.enc-i{font-size:28px}
+.enc-t{font-size:12.5px;font-weight:700;color:#A87038}
+.enc-s{font-size:10.5px;color:#BC8B52;margin-top:2px}
+
+/* 列表项 */
+.li{background:var(--surface);border-radius:14px;padding:13px;box-shadow:var(--sh);margin-bottom:8px;cursor:pointer}
+.li:active{transform:scale(.985)}
+.li-t{display:flex;align-items:flex-start;justify-content:space-between;gap:9px}
+.li-n{font-size:14px;font-weight:700;line-height:1.4}
+.li-c{font-size:10.5px;color:var(--t3);margin-top:3px}
+.li-m{display:flex;align-items:center;gap:7px;margin-top:8px;flex-wrap:wrap}
+.li-r{margin-left:auto;font-size:11.5px;color:var(--t3)}
+.bar{height:4px;background:#F4EEEA;border-radius:2px;overflow:hidden;margin-top:8px}
+.bar i{display:block;height:100%;background:var(--grad);border-radius:2px}
+
+/* Tabs */
+.tabs{display:flex;gap:6px;overflow-x:auto;padding:2px 0 9px;margin:0 -16px;padding-left:16px;padding-right:16px}
+.tabs::-webkit-scrollbar{display:none}
+.tabf{flex:0 0 auto;padding:6px 14px;border-radius:999px;font-size:12px;font-weight:600;background:var(--surface);
+  color:var(--t2);cursor:pointer;border:1.6px solid transparent;transition:.15s}
+.tabf.on{background:var(--grad);color:#fff;box-shadow:0 3px 9px rgba(255,138,122,.3)}
+.tabf .n{opacity:.7;font-size:10.5px}
+
+/* 科目详情 */
+.sthero{background:var(--surface);border-radius:20px;padding:16px;box-shadow:var(--sh);margin-bottom:11px}
+.stcode{font-size:10.5px;color:var(--t3);font-weight:600;letter-spacing:.4px}
+.stname{font-size:18px;font-weight:800;line-height:1.3;margin:3px 0 8px}
+.stmeta{display:flex;gap:5px;flex-wrap:wrap}
+.kv{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:12.5px;gap:10px}
+.kv:last-child{border-bottom:none}
+.kv .k{color:var(--t2);flex:0 0 auto}
+.kv .v{font-weight:700;text-align:right}
+.kv .v.sm{font-size:11.5px;font-weight:600}
+
+.sbig{background:linear-gradient(120deg,#F3FBF7,#E9F6EF);border-radius:14px;padding:14px;margin-bottom:11px;text-align:center;position:relative}
+.sbig.fail{background:linear-gradient(120deg,#FFF4F5,#FFE9EC)}
+.sbig .lb{font-size:11px;color:#5C8B74;font-weight:600}
+.sbig.fail .lb{color:#C06070}
+.sbig .sc{font-size:44px;font-weight:800;color:#3F8B66;letter-spacing:-2px;line-height:1.1}
+.sbig.fail .sc{color:var(--danger)}
+.sbig .ln{font-size:10px;color:var(--t3);margin-top:2px}
+
+/* 提醒 */
+.rm{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.rm:last-child{border-bottom:none}
+.rm-i{width:32px;height:32px;border-radius:10px;background:var(--primary-xl);display:flex;align-items:center;
+  justify-content:center;font-size:15px;flex:0 0 32px}
+.rm-t{font-size:12.5px;font-weight:600}
+.rm-s{font-size:10.5px;color:var(--t3);margin-top:1px}
+.sw{margin-left:auto;width:40px;height:23px;border-radius:999px;background:#E8DED9;position:relative;cursor:pointer;transition:.25s;flex:0 0 40px}
+.sw::after{content:'';position:absolute;left:3px;top:3px;width:17px;height:17px;background:#fff;border-radius:50%;transition:.25s;box-shadow:0 1px 4px rgba(0,0,0,.16)}
+.sw.on{background:var(--grad)}
+.sw.on::after{transform:translateX(17px)}
+
+/* 注意 */
+.notice{background:var(--primary-xl);border-radius:14px;padding:12px;margin-bottom:8px}
+.notice-h{font-size:12.5px;font-weight:700;color:#D2543F;display:flex;align-items:center;gap:5px;margin-bottom:5px}
+.notice li{font-size:12px;color:#8B5A4C;padding-left:13px;position:relative;margin-bottom:3px;line-height:1.55;list-style:none}
+.notice li::before{content:'·';position:absolute;left:4px;font-weight:800;color:var(--primary);font-size:15px;line-height:1.2}
+
+/* 吸底操作 */
+.actionbar{flex:0 0 auto;background:rgba(255,255,255,.97);backdrop-filter:blur(20px);border-top:1px solid var(--line);
+  padding:9px 16px calc(var(--safe-b) + 12px);display:flex;gap:8px;z-index:20}
+.actionbar .btn{flex:1}
+
+/* 日历 */
+.cal{background:var(--surface);border-radius:20px;padding:14px;box-shadow:var(--sh);margin-bottom:11px}
+.cal-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:11px}
+.cal-h b{font-size:15px;font-weight:700}
+.cal-w{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center;margin-bottom:4px}
+.cal-w span{font-size:10px;color:var(--t3);font-weight:600;padding:3px 0}
+.cal-g{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.cal-d{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-size:12px;border-radius:10px;position:relative;cursor:pointer}
+.cal-d.out{color:#DDD0CA}
+.cal-d.we{color:#E8A0A8}
+.cal-d.on{background:var(--grad);color:#fff;font-weight:800;box-shadow:0 3px 9px rgba(255,138,122,.34)}
+.cal-d .dot{width:4px;height:4px;border-radius:50%;background:var(--primary);position:absolute;bottom:4px}
+.cal-d.on .dot{background:#fff}
+.cal-d .dot.b{background:var(--accent)}
+.cal-lg{display:flex;gap:13px;justify-content:center;margin-top:11px;padding-top:10px;border-top:1px solid var(--line)}
+.cal-lg span{font-size:10px;color:var(--t2);display:flex;align-items:center;gap:4px}
+.cal-lg i{width:6px;height:6px;border-radius:50%;display:block}
+
+.evt{background:var(--surface);border-radius:14px;padding:12px;box-shadow:var(--sh);margin-bottom:8px;display:flex;gap:10px;cursor:pointer}
+.evt-d{width:42px;flex:0 0 42px;border-radius:11px;background:var(--primary-xl);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;padding:5px 0}
+.evt-d b{font-size:16px;font-weight:800;color:var(--primary);letter-spacing:-.5px;line-height:1}
+.evt-d span{font-size:8.5px;color:var(--primary);opacity:.75}
+.evt-t{font-size:12.5px;font-weight:700;line-height:1.4}
+.evt-s{font-size:10.5px;color:var(--t2);margin-top:2px}
+
+/* 学位 */
+.dg{background:linear-gradient(135deg,#EAF7F0,#DCF0E6);border-radius:20px;padding:17px;box-shadow:var(--sh);
+  margin-bottom:11px;position:relative;overflow:hidden;text-align:center}
+.dg::after{content:'🎓';position:absolute;right:8px;bottom:-10px;font-size:56px;opacity:.13}
+.dg-l{font-size:11.5px;color:#5C8B74;font-weight:600;position:relative;z-index:2}
+.gauge{height:88px;position:relative;margin:6px 0;z-index:2}
+.dg-n{font-size:32px;font-weight:800;color:#3F8B66;letter-spacing:-1.5px;line-height:1;position:relative;z-index:2}
+.dg-s{font-size:11px;color:#6B9C85;position:relative;z-index:2}
+.cond{background:var(--surface);border-radius:14px;padding:12px;box-shadow:var(--sh);margin-bottom:8px;display:flex;gap:10px;align-items:flex-start}
+.cond-i{width:24px;height:24px;border-radius:50%;flex:0 0 24px;display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:800;color:#fff}
+.cond-i.ok{background:var(--accent)}
+.cond-i.no{background:#E8DED9;color:var(--t3)}
+.cond-t{font-size:13px;font-weight:700}
+.cond-s{font-size:11px;color:var(--t2);margin-top:2px;line-height:1.5}
+.adv{background:linear-gradient(120deg,#FFF6E8,#FFEFE0);border-radius:14px;padding:12px;margin-bottom:11px;
+  font-size:12px;color:#A87038;line-height:1.7}
+.adv b{color:#E8853F}
+
+.sim{background:var(--surface);border-radius:14px;padding:14px;box-shadow:var(--sh);margin-bottom:11px}
+.slider{width:100%;-webkit-appearance:none;height:6px;border-radius:3px;outline:none;margin:10px 0 5px;
+  background:linear-gradient(90deg,var(--primary) var(--pct,70%),#F0E6E0 var(--pct,70%))}
+.slider::-webkit-slider-thumb{-webkit-appearance:none;width:21px;height:21px;border-radius:50%;background:#fff;
+  box-shadow:0 2px 8px rgba(255,138,122,.5);border:3px solid var(--primary);cursor:pointer}
+.simr{display:flex;justify-content:space-between;font-size:11.5px;color:var(--t2)}
+.simr b{font-size:16px;font-weight:800;color:var(--primary)}
+
+.steps{display:flex;align-items:flex-start}
+.step{flex:1;text-align:center;position:relative}
+.step::before{content:'';position:absolute;top:10px;left:-50%;width:100%;height:2px;background:#F0E6E0}
+.step:first-child::before{display:none}
+.step.done::before,.step.cur::before{background:var(--primary)}
+.step-c{width:21px;height:21px;border-radius:50%;background:#F0E6E0;color:var(--t3);font-size:10.5px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;margin:0 auto 4px;position:relative;z-index:1}
+.step.done .step-c{background:var(--grad);color:#fff}
+.step.cur .step-c{background:#fff;border:2.2px solid var(--primary);color:var(--primary);box-shadow:0 0 0 3.5px var(--primary-xl)}
+.step-l{font-size:9px;color:var(--t3);line-height:1.3}
+.step.done .step-l,.step.cur .step-l{color:var(--t1);font-weight:600}
+
+.tdir{background:var(--surface);border-radius:14px;padding:11px;box-shadow:var(--sh);margin-bottom:7px;display:flex;gap:9px;align-items:center;cursor:pointer}
+.tdir-b{flex:1;min-width:0}
+.tdir-t{font-size:12.5px;font-weight:700;line-height:1.4;margin-bottom:4px}
+.tdir-r{text-align:center;flex:0 0 38px}
+.stars{font-size:9.5px;color:var(--secondary);letter-spacing:-1px}
+.heat{font-size:9px;color:var(--primary);font-weight:700;margin-top:1px}
+
+/* 弹层 */
+.mask{position:fixed;inset:0;background:rgba(74,63,60,.4);backdrop-filter:blur(3px);z-index:100;
+  display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:.28s}
+.mask.on{opacity:1;pointer-events:auto}
+.sheet{background:var(--bg);border-radius:26px 26px 0 0;width:100%;max-width:480px;
+  padding:8px 18px calc(var(--safe-b) + 22px);transform:translateY(100%);
+  transition:transform .3s cubic-bezier(.32,.72,0,1);max-height:88vh;overflow-y:auto}
+.mask.on .sheet{transform:translateY(0)}
+.shbar{width:34px;height:4px;border-radius:2px;background:#E5D8D2;margin:0 auto 4px}
+.shh{display:flex;justify-content:space-between;align-items:center;padding:8px 0 14px;position:sticky;top:0;
+  background:var(--bg);z-index:2}
+.shh b{font-size:16px;font-weight:700}
+.inp{width:100%;padding:12px 13px;border-radius:14px;border:1.6px solid var(--line);background:var(--surface);
+  font-size:14px;font-family:inherit;color:var(--t1);outline:none;transition:.2s}
+.inp:focus{border-color:var(--primary);background:var(--primary-xl)}
+.scinput{text-align:center;font-size:50px;font-weight:800;letter-spacing:-2px;padding:6px;color:var(--primary);border:none;background:transparent}
+.scinput:focus{background:transparent}
+.schint{text-align:center;font-size:11.5px;margin-top:2px;min-height:17px;font-weight:600}
+.pills{display:flex;flex-wrap:wrap;gap:6px}
+.pill{padding:6px 13px;border-radius:999px;background:var(--bg);font-size:12px;font-weight:600;cursor:pointer;transition:.15s;border:1.5px solid transparent}
+.pill.on{background:var(--grad);color:#fff;box-shadow:0 3px 9px rgba(255,138,122,.3)}
+
+/* 资讯详情正文 */
+.art{background:var(--surface);border-radius:20px;padding:18px;box-shadow:var(--sh);margin-bottom:11px}
+.art-t{font-size:18px;font-weight:800;line-height:1.4;margin-bottom:9px;letter-spacing:-.3px}
+.art-m{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding-bottom:12px;border-bottom:1px solid var(--line);margin-bottom:13px}
+.art-b{font-size:14.5px;line-height:1.85;color:#5C4F4B;white-space:pre-wrap;word-break:break-word}
+.art-src{margin-top:16px;padding:12px;background:var(--primary-xl);border-radius:12px;font-size:11.5px;color:#8B5A4C);
+  word-break:break-all;line-height:1.7}
+
+/* Toast */
+#tg{position:fixed;left:50%;top:calc(var(--safe-t) + 16px);transform:translateX(-50%);
+  background:rgba(74,63,60,.94);color:#fff;padding:10px 18px;border-radius:999px;font-size:12.5px;font-weight:600;
+  z-index:999;box-shadow:0 6px 22px rgba(0,0,0,.24);transition:.3s;white-space:nowrap;max-width:90vw}
+
+/* 加载 */
+#boot{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:12px;z-index:200;transition:opacity .4s}
+#boot.off{opacity:0;pointer-events:none}
+.bootlogo{font-size:52px;animation:fl 1.6s ease-in-out infinite}
+@keyframes fl{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-9px) rotate(4deg)}}
+.boott{font-size:17px;font-weight:800;letter-spacing:1px}
+.boots{font-size:11.5px;color:var(--t3)}
+</style>
+</head>
+<body>
+
+<div id="boot">
+  <div class="bootlogo">🌸</div>
+  <div class="boott">自考星</div>
+  <div class="boots" id="boots">正在读取你的备考数据…</div>
+</div>
+
+<div id="app">
+  <div class="sbar"><span class="num" id="clock">--:--</span><span>📶 🔋</span></div>
+
+  <!-- ===== 首页 ===== -->
+  <div class="screen on" id="s-home">
+    <div class="scroll" id="h-scroll">
+      <div class="appbar">
+        <div><h1 id="greet">早安 🌷</h1><div class="sub" id="today">—</div></div>
+        <div style="display:flex;gap:7px"><div class="ib" id="btnCrawl">🔄</div><div class="ib" onclick="go('news')">📰</div></div>
+      </div>
+      <div id="homeBody"></div>
+    </div>
+  </div>
+
+  <!-- ===== 科目 ===== -->
+  <div class="screen" id="s-courses">
+    <div class="scroll">
+      <div class="appbar">
+        <div><h1>我的科目</h1><div class="sub" id="courseSub">—</div></div>
+        <div class="ib" onclick="openSetup()">⚙️</div>
+      </div>
+      <div class="tabs" id="courseTabs"></div>
+      <div id="courseBody"></div>
+    </div>
+  </div>
+
+  <!-- ===== 科目详情 ===== -->
+  <div class="screen" id="s-detail">
+    <div class="scroll" id="detailScroll"></div>
+    <div class="actionbar" id="detailBar"></div>
+  </div>
+
+  <!-- ===== 资讯 ===== -->
+  <div class="screen" id="s-news">
+    <div class="scroll">
+      <div class="appbar">
+        <h1>资讯</h1>
+        <div class="ib" onclick="crawlNow(true)">🔄</div>
+      </div>
+      <div class="tabs" id="newsTabs">
+        <div class="tabf on" data-c="全部">全部</div>
+        <div class="tabf" data-c="时间">考试时间</div>
+        <div class="tabf" data-c="报名">报名</div>
+        <div class="tabf" data-c="考纲">考纲</div>
+        <div class="tabf" data-c="学位">学位</div>
+        <div class="tabf" data-c="成绩">成绩</div>
+        <div class="tabf" data-c="政策">政策</div>
+      </div>
+      <div id="crawlStat" style="font-size:10.5px;color:var(--t3);padding:0 2px 9px"></div>
+      <div id="newsBody"></div>
+    </div>
+  </div>
+
+  <!-- ===== 资讯详情 ===== -->
+  <div class="screen" id="s-article">
+    <div class="scroll" id="artScroll"></div>
+  </div>
+
+  <!-- ===== 日历 ===== -->
+  <div class="screen" id="s-cal">
+    <div class="scroll">
+      <div class="appbar"><h1>考试日历</h1><div class="ib" onclick="go('news')">📰</div></div>
+      <div id="calBody"></div>
+    </div>
+  </div>
+
+  <!-- ===== 学位 ===== -->
+  <div class="screen" id="s-degree">
+    <div class="scroll" id="degScroll"></div>
+  </div>
+
+  <div class="tabbar">
+    <div class="tab on" data-s="home"><span class="ic">🏠</span>首页</div>
+    <div class="tab" data-s="courses"><span class="ic">📚</span>科目</div>
+    <div class="tab" data-s="cal"><span class="ic">🗓</span>日历</div>
+    <div class="tab" data-s="news"><span class="ic">📰</span>资讯</div>
+    <div class="tab" data-s="degree"><span class="ic">🎓</span>学位</div>
+  </div>
+</div>
+
+<div class="mask" id="mask" onclick="if(event.target===this)closeSheet()">
+  <div class="sheet"><div class="shbar"></div>
+    <div class="shh"><b id="shTitle">标题</b><div class="ib" onclick="closeSheet()">✕</div></div>
+    <div id="shBody"></div>
+  </div>
+</div>
+
+<script src="shared/rules.js"></script>
+<script src="shared/store.js"></script>
+<script src="shared/crawler-web.js"></script>
+<script>
+const $ = (s,r=document)=>r.querySelector(s);
+const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
+const API = async (p,o)=>{const r=await fetch(p,o);if(!r.ok)throw new Error('HTTP '+r.status);return r.json()};
+const POST = (p,b)=>API(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});
+
+let S = { boot:null, courses:[], addOn:null, news:[], deg:null, curCourse:null, newsCat:'全部' };
+
+// ---------- 时钟 ----------
+function tick(){
+  const d=new Date();
+  $('#clock').textContent=d.getHours()+':'+String(d.getMinutes()).padStart(2,'0');
+  const h=d.getHours();
+  $('#greet').textContent = h<6?'夜深了 🌙':h<11?'早安 ☀️':h<14?'午安 🍵':h<18?'下午好 🌤':h<23?'晚上好 🌙':'夜深了 🌙';
+}
+setInterval(tick,10000);tick();
+
+// ---------- Toast ----------
+let tt;
+function toast(m){const t=$('#tg');t.textContent=m;t.style.opacity='1';t.style.top='calc(var(--safe-t) + 16px)';
+  clearTimeout(tt);tt=setTimeout(()=>{t.style.opacity='0';t.style.top='calc(var(--safe-t) + 8px)'},1900);
+  if(!t.parentNode)document.body.appendChild(t);}
+
+// ---------- 弹层 ----------
+function openSheet(title,html){$('#shTitle').textContent=title;$('#shBody').innerHTML=html;$('#mask').classList.add('on')}
+function closeSheet(){$('#mask').classList.remove('on')}
+
+// ---------- 导航 ----------
+function go(s){
+  $$('.screen').forEach(x=>x.classList.remove('on'));
+  $('#s-'+s).classList.add('on');
+  $$('.tab').forEach(t=>t.classList.toggle('on',t.dataset.s===s));
+  $('#'+s+'-scroll')?.scrollTo?.(0,0);
+  if(s==='degree')renderDegree();
+}
+$$('.tab').forEach(t=>t.onclick=()=>go(t.dataset.s));
+
+// ---------- 格式化 ----------
+const pad=n=>String(n).padStart(2,'0');
+const fdate=d=>d?`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`:'';
+function daysLeft(ds){ if(!ds) return null; const t=new Date(ds+'T00:00:00'); return Math.ceil((t-new Date())/864e5); }
+function relDate(ds){
+  if(!ds) return '';
+  const d=daysLeft(ds);
+  if(d===null) return ds;
+  if(d<0) return ds+'（已过）';
+  if(d===0) return '今天';
+  if(d===1) return '明天';
+  return ds+' · '+d+'天后';
+}
+const STATUS_CLS={'未开始':'c-wait','已报名':'c-prep','备考中':'c-prep','已考待出分':'c-ing','已通过':'c-done','未通过':'c-fail','免考':'c-done'};
+/** 状态兜底：任何 null/undefined/空串都归为「未开始」，绝不把 null 渲染到界面 */
+const stText=s=>(s===null||s===undefined||s===''||s==='null')?'未开始':s;
+const stCls=s=>STATUS_CLS[stText(s)]||'c-wait';
+const catColor=c=>({'时间':'tag','报名':'tag-n','考纲':'tag-n','学位':'tag','成绩':'tag','政策':'tag'}[c]||'tag');
+
+/* ================= 双运行模式 =================
+ * PC  ：有本地 Node 服务（localhost:5173），数据在 SQLite，可开守护进程常驻抓取
+ * 手机：APK 内无 Node，全部走 shared/store.js（localStorage+IndexedDB）+ WebView 爬虫
+ * 同一套 UI 与计算逻辑，仅数据层不同。
+ */
+const IS_Capacitor = !!window.Capacitor;
+let MODE = IS_Capacitor ? 'mobile' : 'pc';
+async function detectMode(){
+  if(IS_Capacitor) return 'mobile';
+  try{
+    const c=new AbortController(); setTimeout(()=>c.abort(),1200);
+    const r=await fetch('/api/bootstrap',{signal:c.signal});
+    clearTimeout(c.timeout);
+    if(r.ok) return 'pc';
+  }catch(e){}
+  return 'mobile';
+}
+
+// 移动端数据适配层：把 store 的接口包成与后端一致的形状
+const Local = {
+  async bootstrap(){
+    const S=window.ZKStore;
+    return {
+      profile:S.getProfile(), group:S.getGroup(),
+      progress:S.computeProgress(), degree:S.computeDegree(),
+      stats:{ newsTotal:(await S.idbAll()).length, changePending:0,
+              sourceOk:S.SYLLABUS.sources.length, sourceTotal:S.SYLLABUS.sources.length,
+              lastCrawl:S.loadState().settings.lastCrawlAt||'' },
+    };
+  },
+  async courses(){
+    const S=window.ZKStore;
+    const main=S.getExamCourses().map(c=>{
+      const b=S.bestScore(c.code);
+      return {code:c.code,name:c.name,credits:c.credits,exam_mode:c.mode,
+        course_type:c.type,is_thesis:!!c.is_thesis,parent_code:c.parent||null,
+        bestScore:b,status:S.effectiveStatus(c.code),pass:b!==null&&b>=60,
+        planned_exam_date:(S.loadState().userCourse[c.code]||{}).planned_exam_date||null,
+        note:(S.loadState().userCourse[c.code]||{}).note||''};
+    });
+    const r=S.getAddOnRule();
+    return {courses:main, addOn:{rule:{rule_desc:r.desc},active:r.codes,courses:[]}};
+  },
+  async course(code){
+    const S=window.ZKStore;
+    const c=S.getExamCourses().find(x=>x.code===code);
+    if(!c) return null;
+    const uc=S.loadState().userCourse[code]||{};
+    const news=await ZKLocal.newsFor(code);
+    return {...c, exam_mode:c.mode, credits:c.credits, is_thesis:!!c.is_thesis,
+      parent_code:c.parent||null, status:S.effectiveStatus(code),
+      bestScore:S.bestScore(code), scores:S.allScores(code),
+      pass:(S.bestScore(code)??-1)>=60, news, exam:null,
+      planned_exam_date:uc.planned_exam_date||null, note:uc.note||''};
+  },
+  async news(opts={}){
+    const all=await window.ZKStore.idbAll();
+    let list=all;
+    if(opts.category&&opts.category!=='全部') list=list.filter(n=>n.category===opts.category);
+    if(opts.code) list=list.filter(n=>(n.matched_courses||'').split(',').includes(opts.code)||n.title.includes(opts.code));
+    return list.sort((a,b)=>(b.change_flag-a.change_flag)||(b.relevance-a.relevance))
+      .slice(0,opts.limit||60)
+      .map(n=>({...n,len:(n.content||'').length}));
+  },
+  async newsDetail(id){
+    const all=await window.ZKStore.idbAll();
+    return all.find(n=>n.hash===id)||null;
+  },
+};
+const ZKLocal = {
+  async newsFor(code){
+    const all=await window.ZKStore.idbAll();
+    const kw=code;
+    return all.sort((a,b)=>{
+      const rank=n=>((n.matched_courses||'').includes(kw)?0:(n.title.includes(kw)?1:(['时间','政策','报名','考纲'].includes(n.category)?2:3)));
+      const ra=rank(a), rb=rank(b);
+      if(ra!==rb) return ra-rb;
+      return new Date(a.published_at||0)-new Date(b.published_at||0);
+    }).slice(0,3).map(n=>({...n,len:(n.content||'').length}));
+  },
+  async setCourse(code,patch){ window.ZKStore.setCourseStatus(code,patch); return {ok:true}; },
+  async saveScore(code,rec){ return window.ZKStore.saveScore(code,rec); },
+  async delScore(code,idx){ window.ZKStore.deleteScore(code,idx); return {ok:true}; },
+  async crawl(){
+    if(!window.ZKCrawler) return {error:'爬虫未加载'};
+    const c=new window.ZKCrawler.Crawler(window.ZKStore);
+    return c.runOnce(true);
+  },
+  async calendar(){
+    const S=window.ZKStore;
+    return S.getExamCourses().map(c=>{
+      const d=(S.loadState().userCourse[c.code]||{}).planned_exam_date;
+      return d?{date:d,type:'exam',code:c.code,title:c.name,sub:`${c.credits} 学分 · ${c.mode}`,status:S.effectiveStatus(c.code)}:null;
+    }).filter(Boolean).sort((a,b)=>a.date.localeCompare(b.date));
+  },
+  async directions(){ return window.ZKStore.SYLLABUS.thesisDirections; },
+  async setup(patch){ window.ZKStore.setProfile(patch); return Local.bootstrap(); },
+};
+
+// ================= 首页 =================
+function renderHome(){
+  const b=S.boot, p=b.progress, d=b.degree, g=b.group;
+  $('#today').textContent=`${g.school_name||''} · ${g.major_name||''} · ${g.level||''}`;
+  const R=70,C=2*Math.PI*43;
+  const pend=(S.courses||[]).filter(c=>['已报名','备考中'].includes(stText(c.status)));
+  const next=pend.find(c=>c.planned_exam_date&&daysLeft(c.planned_exam_date)>=0);
+  const nd=next?daysLeft(next.planned_exam_date):null;
+  const changes=b.stats.changePending;
+
+  let h=`
+  <div class="hero">
+    <div class="hero-h">
+      <div><h3>🎓 ${esc(g.school_name||'未设置')}</h3><p>${g.province_code?'广东省 · ':''}${esc(g.group_name||'')}</p></div>
+      <div style="text-align:right;background:rgba(255,255,255,.2);padding:3px 9px;border-radius:999px;font-size:10.5px;font-weight:700">${g.major_code||'080901'}</div>
+    </div>
+    <div class="ringwrap">
+      <div class="ring">
+        <svg width="96" height="96">
+          <circle cx="48" cy="48" r="43" stroke="rgba(255,255,255,.24)" stroke-width="11" fill="none"/>
+          <circle cx="48" cy="48" r="43" stroke="#fff" stroke-width="11" fill="none" stroke-linecap="round"
+            stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C*(1-p.percent/100)).toFixed(1)}"/>
+        </svg>
+        <div class="ringc"><b class="num">${p.percent}%</b><span>毕业进度</span></div>
+      </div>
+      <div class="ringi">
+        <div class="r"><b class="num">${p.earned}</b><span>/ ${p.total} 学分</span></div>
+        <div class="r"><b class="num">${p.passedCount}</b><span>/ ${p.requiredCount} 门已过</span></div>
+        <div class="d">${p.failCount?`⚠️ ${p.failCount} 门待补考 · `:''}${p.thesisDone?'论文已过 · ':''}${'离毕业还早，加油 🌸'}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="g4">
+    <div class="g4c"><b class="num">${d.avg??'—'}</b><span>学位均分</span></div>
+    <div class="g4c hl"><b>${d.avg===null?'—':(d.avg>=d.minAvg?'✓':'✗')}</b><span>${d.avg===null?'待录入':(d.avg>=d.minAvg?'达标':'未达标')}</span></div>
+    <div class="g4c"><b class="num">${S.courses.filter(c=>!c.pass&&!c.is_thesis).length}</b><span>待考科目</span></div>
+    <div class="g4c"><b class="num">${p.failCount}</b><span>待补考</span></div>
+  </div>`;
+
+  if(changes>0) h+=`
+  <div class="alert" onclick="openChanges()">
+    <div class="ai">🔔</div>
+    <div style="flex:1"><div class="alert-t">有 ${changes} 项政策/考试变动待确认</div>
+    <div class="alert-s">点击查看详情，可能影响你的报考计划</div></div>
+    <div style="color:#C93A50;font-size:16px">›</div>
+  </div>`;
+
+  if(next) h+=`
+  <div class="cd">
+    <div class="cd-l">🔥 距下一场考试</div>
+    <div class="cd-n num">${nd} <small>天</small></div>
+    <div class="cd-s">${relDate(next.planned_exam_date)} · ${esc(next.name)}</div>
+  </div>`;
+
+  h+=`<div class="st">待考科目<span class="tail">共 ${S.courses.filter(c=>!c.pass).length} 门 ›</span></div><div class="hscroll">`;
+  const todo=S.courses.filter(c=>!c.pass).slice(0,10);
+  if(!todo.length) h+=`<div style="font-size:12px;color:var(--t3);padding:8px 2px">全部课程已通过 🎉</div>`;
+  todo.forEach(c=>{
+    h+=`<div class="cchip" onclick="openCourse('${c.code}')">
+      <div class="cc">${c.code}</div><div class="cn">${esc(c.name)}</div>
+      <div class="cs ${stCls(c.status)}">${stText(c.status)}${c.planned_exam_date&&daysLeft(c.planned_exam_date)>=0?' · '+relDate(c.planned_exam_date).split(' · ')[1]:''}</div>
+    </div>`;
+  });
+  h+=`</div>`;
+
+  h+=`<div class="st">📰 本专业资讯</div>`;
+  S.news.slice(0,3).forEach((n,i)=>{
+    h+=`<div class="news bd" onclick="openArticle(${n.id})">
+      <div class="news-rk">${i+1}</div>
+      <div class="news-t">${esc(n.title)}</div>
+      <div class="news-m"><span class="${catColor(n.category)}">${n.category}</span>
+      <span class="news-src">${esc(n.source_name||'')}</span><span class="news-time">${n.published_at||''}</span></div>
+    </div>`;
+  });
+  if(!S.news.length) h+=`<div class="empty"><div class="e">📭</div>暂无资讯，点右上角 🔄 抓取</div>`;
+  else h+=`<div style="text-align:center;font-size:12px;color:var(--primary);font-weight:600;padding:4px 0 6px" onclick="go('news')">查看全部 ${b.stats.newsTotal} 条 ›</div>`;
+
+  const pct=p.percent;
+  h+=`<div class="st">💡 给你的建议</div><div class="enc"><div class="enc-i">🌷</div><div>
+    <div class="enc-t">${pct>=80?'你已完成大部分课程，胜利在望！':pct>=50?'已过半程，保持节奏！':pct>=20?'已经起步了，继续加油':'今天就是最好的开始'}</div>
+    <div class="enc-s">${d.advice?esc(d.advice.slice(0,90)):(d.avg!==null&&d.avg>=d.minAvg?`学位均分 ${d.avg} 已达标，继续保持每科 70+`:'录入成绩后我会帮你算学位均分')}</div>
+  </div></div>`;
+
+  $('#homeBody').innerHTML=h;
+}
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+// ================= 科目列表 =================
+function renderCourses(){
+  const g=S.boot.group;
+  $('#courseSub').textContent=`${g.school_name||''} · ${g.major_code||''} ${g.major_name||''} · 2026版`;
+  const all=S.courses;
+  const groups=[
+    {k:'all',n:'全部',l:all},
+    {k:'已报名',n:'已报名',l:all.filter(c=>stText(c.status)==='已报名')},
+    {k:'备考中',n:'备考中',l:all.filter(c=>stText(c.status)==='备考中')},
+    {k:'未通过',n:'待补考',l:all.filter(c=>stText(c.status)==='未通过')},
+    {k:'已通过',n:'已通过',l:all.filter(c=>stText(c.status)==='已通过')},
+    {k:'已考待出分',n:'待出分',l:all.filter(c=>stText(c.status)==='已考待出分')},
+  ];
+  let h='';
+  groups.forEach((g2,i)=>{
+    if(i===0) h+=`<div class="tabf on" data-g="all">全部 <span class="n">${g2.l.length}</span></div>`;
+    else if(g2.l.length) h+=`<div class="tabf" data-g="${g2.k}">${g2.n} <span class="n">${g2.l.length}</span></div>`;
+  });
+  if(S.addOn&&S.addOn.courses.filter(c=>c.required).length){
+    h+=`<div class="tabf" data-g="加考">加考 <span class="n">${S.addOn.courses.filter(c=>c.required).length}</span></div>`;
+  }
+  $('#courseTabs').innerHTML=h;
+  $$('#courseTabs .tabf').forEach(t=>t.onclick=()=>{
+    $$('#courseTabs .tabf').forEach(x=>x.classList.remove('on'));t.classList.add('on');
+    renderCourseList(t.dataset.g);
+  });
+  renderCourseList('all');
+}
+function renderCourseList(gk){
+  let list = gk==='all'?S.courses:S.courses.filter(c=>stText(c.status)===stText(gk));
+  let h='';
+  if(gk==='加考'&&S.addOn){
+    h+=`<div class="card" style="background:linear-gradient(120deg,#FFF8F0,#FFF1E6)">
+      <div style="font-size:12px;color:#A87038;line-height:1.7">
+        <b>⚠️ 加考说明</b><br>${esc(S.addOn.rule?.rule_desc||'按前置学历判定')}<br>
+        <span style="font-size:11px;opacity:.8">已取得相同名称课程合格可申请免考</span></div></div>`;
+    S.addOn.courses.filter(c=>c.required).forEach(c=>list.push({...c,status:c.bestScore!==null&&c.bestScore>=60?'已通过':'未开始'}));
+  }
+  if(!list.length) h=`<div class="empty"><div class="e">🌱</div>这一类还没有科目</div>`;
+  list.forEach(c=>{
+    const d=c.planned_exam_date?daysLeft(c.planned_exam_date):null;
+    h+=`<div class="li" onclick="openCourse('${c.code}')">
+      <div class="li-t">
+        <div style="flex:1"><div class="li-n">${esc(c.name)}</div>
+        <div class="li-c">${c.code} · ${c.credits} 学分 · ${c.exam_mode}${c.is_thesis?' · 毕业环节':''}</div></div>
+        <div style="text-align:right;flex:0 0 auto">
+          <span class="chip ${stCls(c.status)}">${stText(c.status)}</span>
+          ${c.bestScore!==null&&c.bestScore!==undefined?`<div style="font-size:16px;font-weight:800;margin-top:3px;color:${c.bestScore>=60?'#3F8B66':'#C93A50'}" class="num">${c.bestScore}</div>`:''}
+        </div>
+      </div>
+      ${c.planned_exam_date?`<div class="li-m"><span style="font-size:11px;color:var(--t2)">📅 ${relDate(c.planned_exam_date)}</span>${d>=0?`<span class="li-r" style="color:var(--primary);font-weight:600">倒计时 ${d} 天 ›</span>`:''}</div>`:''}
+    </div>`;
+  });
+  $('#courseBody').innerHTML=h;
+}
+
+// ================= 科目详情 =================
+async function openCourse(code){
+  try{
+    const d=await (MODE==='pc'?API('/api/course?code='+code):ZKLocal.course(code));
+    if(!d){toast('未找到该科目');return}
+    S.curCourse=d;
+    $('#detailScroll').innerHTML=detailHTML(d);
+    $('#detailBar').innerHTML=`
+      <button class="btn btn-o" onclick="editCourse()">编辑科目</button>
+      <button class="btn btn-p" onclick="openScore()">${d.scores.length?'修改成绩':'录入成绩'}</button>`;
+    $$('#detailScroll .sw').forEach(s=>s.onclick=()=>s.classList.toggle('on'));
+    go('detail');
+  }catch(e){toast('加载失败：'+e.message)}
+}
+function detailHTML(d){
+  const nd=d.planned_exam_date?daysLeft(d.planned_exam_date):null;
+  const has=d.bestScore!==null&&d.bestScore!==undefined;
+  let h=`
+  <div class="appbar">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="ib" onclick="go('courses')">‹</div>
+      <b style="font-size:15px">科目详情</b></div>
+    <div class="ib" onclick="editCourse()">✏️</div>
+  </div>
+  <div class="sthero">
+    <div class="stcode">课程代码 ${d.code}</div>
+    <div class="stname">${esc(d.name)}</div>
+    <div class="stmeta">
+      <span class="chip ${stCls(d.status)}">${stText(d.status)}</span>
+      <span class="chip c-wait">${d.credits} 学分</span>
+      <span class="chip c-wait">${d.exam_mode}</span>
+      ${d.is_thesis?'<span class="chip c-ing">毕业环节</span>':''}
+    </div>
+    <div style="border-top:1px solid var(--line);margin:12px 0 2px"></div>
+    <div class="kv"><div class="k">📅 预计考试</div><div class="v num">${d.planned_exam_date?relDate(d.planned_exam_date):'未设置'}</div></div>
+    ${d.exam?`<div class="kv"><div class="k">🏛 官方安排</div><div class="v sm num">${d.exam.exam_date} ${d.exam.session==='AM'?'上午':'下午'}</div></div>`:''}
+    <div class="kv"><div class="k">📌 我的已考状态</div><div class="v sm">${has?`最高 ${d.bestScore} 分 ${d.pass?'· 已通过':'· 未及格'}`:'暂无成绩'}</div></div>
+    ${d.parent_code?`<div class="kv"><div class="k">🔗 关联实践</div><div class="v sm">需同时通过 ${esc(d.parent_code)} 实践考核</div></div>`:''}
+  </div>
+
+  <div class="sbig ${has&&!d.pass?'fail':''}">
+    <div class="lb">我的成绩</div>
+    <div class="sc num">${has?d.bestScore:'—'}</div>
+    <div class="ln">及格线 60 分 · ${d.scores.length?`共 ${d.scores.length} 条成绩记录`:'考完后可录入'}</div>
+  </div>`;
+
+  if(d.scores.length){
+    h+=`<div class="card"><div class="card-t">📊 成绩记录</div>`;
+    d.scores.forEach(s=>{
+      h+=`<div class="kv">
+        <div class="k num">${s.exam_date||'—'}${s.score_type&&s.score_type!=='正常'?' · '+s.score_type:''}</div>
+        <div class="v num" style="color:${(s.score||0)>=60?'#3F8B66':'#C93A50'}">${s.score??'未出分'}</div>
+        <button class="ib" style="width:28px;height:28px;font-size:12px" onclick="delScore(${s.id})">🗑</button>
+      </div>`;
+    });
+    h+=`</div>`;
+  }
+
+  const dg=S.boot.degree;
+  h+=`<div class="card"><div class="card-t">🎯 对学位均分的影响<span class="more" onclick="go('degree')">均分 ${dg.avg??'—'} ›</span></div>
+    <div class="kv"><div class="k">当前均分（加权）</div><div class="v num">${dg.avg??'—'} ${dg.avg!==null?(dg.avg>=dg.minAvg?'<span class="chip c-done">达标</span>':'<span class="chip c-fail">未达标</span>'):''}</div></div>
+    <div class="kv"><div class="k">学位要求</div><div class="v num">≥ ${dg.minAvg}</div></div></div>`;
+
+  h+=`<div class="st">📰 本科目资讯 TOP3</div>`;
+  if(!d.news||!d.news.length) h+=`<div class="empty"><div class="e">📭</div>暂无相关资讯</div>`;
+  (d.news||[]).forEach((n,i)=>{
+    h+=`<div class="news bd" onclick="openArticle(${n.id})">
+      <div class="news-rk">${i+1}</div>
+      <div class="news-t">${esc(n.title)}</div>
+      <div class="news-m"><span class="${catColor(n.category)}">${n.category}</span>
+      <span class="news-src">${esc(n.source_name||'')}</span><span class="news-time">${n.published_at||''}</span></div>
+    </div>`;
+  });
+  h+=`<div style="text-align:center;font-size:12px;color:var(--primary);font-weight:600;padding:4px 0 6px" onclick="openCourseNews('${d.code}','${esc(d.name)}')">查看本科目全部资讯 ›</div>`;
+
+  h+=`<div class="card"><div class="card-t">⏰ 提醒</div>
+    <div class="rm"><div class="rm-i">📖</div><div><div class="rm-t">考前 7 天提醒</div><div class="rm-s num">${d.planned_exam_date?fdate(new Date(new Date(d.planned_exam_date).getTime()-7*864e5)):'待设置考试日期'}</div></div><div class="sw on"></div></div>
+    <div class="rm"><div class="rm-i">🔥</div><div><div class="rm-t">考前 1 天提醒</div><div class="rm-s num">${d.planned_exam_date?fdate(new Date(new Date(d.planned_exam_date).getTime()-864e5)):'待设置'}</div></div><div class="sw on"></div></div>
+    <div class="rm"><div class="rm-i">📊</div><div><div class="rm-t">成绩公布</div><div class="rm-s">广东一般考后约 2 个月</div></div><div class="sw on"></div></div>
+    <button class="btn btn-g btn-full" style="margin-top:11px" onclick="toast('已加入系统日历 📅')">📅 添加到系统日历</button>
+  </div>
+
+  <div class="st">⚠️ 考试注意事项</div>
+  <div class="notice"><div class="notice-h">🎫 证件要求</div>
+    <li>须携带本人有效身份证原件及准考证，缺一不可</li>
+    <li>身份证过期或遗失需提前办理临时身份证</li></div>
+  <div class="notice"><div class="notice-h">🖊️ 通用规则</div>
+    <li>答题须用黑色签字笔，涂改用修正带，不得使用修正液</li>
+    <li>考试全程不得使用手机、智能手表等电子设备</li>
+    <li>迟到 15 分钟后不得入场，直接该科缺考</li></div>
+  ${d.exam_mode==='笔试'?`<div class="notice"><div class="notice-h">🧮 特别提醒（笔试）</div>
+    <li>多数理工科课程允许使用无存储功能计算器，禁止智能计算器</li>
+    <li>具体以当次考试通知为准，务必提前查看准考证背面的说明</li></div>`:''}
+  <div class="card"><div class="card-t">📝 我的私人备忘</div>
+    <textarea class="inp" id="memo" rows="3" placeholder="考点记录、错题提示、老师信息、资料链接…">${esc(d.note||'')}</textarea>
+    <button class="btn btn-g btn-full" style="margin-top:9px" onclick="saveNote('${d.code}')">保存备忘</button></div>
+  <div style="height:6px"></div>`;
+  return h;
+}
+
+// ---------- 录成绩 ----------
+function openScore(){
+  const d=S.curCourse; if(!d) return;
+  const cur=d.scores[0];
+  const dg=S.boot.degree;
+  // 与后端 computeDegree 同口径：预测均分 = Σ(各科分数×学分) / 全部应考学分
+  // 注意只累加「未过」课程，已过课程的加权分已在 dg 基线里。
+  const sim=(v)=>{
+    if(isNaN(v)||v<0) return '输入分数，实时看到对学位均分的影响';
+    if(v<60) return '未及格 · 该科不计入均分（需补考）';
+    const total=dg.totalCredits||1;
+    // 已过课程加权总分（可由基线均分反推，避免重复写逻辑）
+    const base=dg.countedCredits>0 ? (dg.avg*dg.countedCredits) : 0;
+    // 本门若已过，先扣掉旧分
+    let s = base - (typeof d.bestScore==='number' && d.bestScore>=60 ? d.bestScore*d.credits : 0);
+    // 其余未过课程按 70 分预估
+    S.courses.forEach(c=>{ if(c.is_thesis||c.code===d.code) return;
+      const cs=c.bestScore;
+      if(cs===null||cs===undefined||cs<60) s+=70*c.credits;
+    });
+    // 本门
+    s+=v*d.credits;
+    const nv=Math.round((s/total)*10)/10;
+    return `✓ 预测最终均分 ${nv}（${nv>=dg.avg?'↑':'↓'} ${Math.abs(nv-dg.avg).toFixed(1)}）· ${nv>=dg.minAvg?'已达标 ✓':'距学位线还差 '+(dg.minAvg-nv).toFixed(1)+' 分'}`;
+  };
+  const cur0=cur?.score;
+  openSheet(d.name+' · 成绩',`
+    <div style="text-align:center;margin-bottom:2px">
+      <input type="number" class="inp scinput num" id="scV" inputmode="decimal" placeholder="?" value="${cur0??''}" oninput="updSim()">
+    </div>
+    <div class="schint" id="scH" style="color:var(--t3)">输入分数，实时看到对学位均分的影响</div>
+    <div style="font-size:10px;color:var(--t3);text-align:center;margin-bottom:4px">
+      口径：全部 ${dg.totalCredits||'—'} 应考学分（含尚未考的课程）</div>
+    <div style="margin:14px 0 8px;font-size:12.5px;font-weight:700">考试日期</div>
+    <div class="pills" id="datePills">
+      <div class="pill ${!cur?'on':''}" data-d="">未填写</div>
+      <div class="pill ${cur?.exam_date===fdate(new Date())?'on':''}" data-d="${fdate(new Date())}">今天</div>
+    </div>
+    <input type="date" class="inp" id="scDate" value="${cur?.exam_date||''}" style="margin-top:8px">
+    <div style="margin:14px 0 8px;font-size:12.5px;font-weight:700">考季</div>
+    <div class="pills" id="sesPills">
+      ${['正常','补考','免考'].map(t=>`<div class="pill ${(cur?.score_type||'正常')===t?'on':''}" data-s="${t}">${t==='正常'?'正常考':t}</div>`).join('')}
+    </div>
+    <div style="margin:14px 0 8px;font-size:12.5px;font-weight:700">备注（选填）</div>
+    <textarea class="inp" id="scR" rows="2" placeholder="例如：题量偏大，最后一道大题没写完">${esc(cur?.remark||'')}</textarea>
+    <button class="btn btn-p btn-full" style="margin-top:16px" onclick="saveScore()">保存成绩</button>
+    <div style="font-size:10px;color:var(--t3);text-align:center;margin-top:9px;line-height:1.6">
+      保存后自动更新：科目状态 · 毕业进度 · 学位均分</div>`);
+  setTimeout(()=>$('#scV')?.focus(),380);
+  window._sim=sim; updSim();
+}
+function updSim(){
+  const v=parseFloat($('#scV').value);
+  const h=$('#scH'); if(!h) return;
+  h.textContent=window._sim(v);
+  h.style.color = (isNaN(v)||v<0)?'var(--t3)':(v<60?'var(--danger)':'#3F8B66');
+}
+async function saveScore(){
+  const d=S.curCourse; if(!d) return;
+  const v=$('#scV').value.trim();
+  if(v!==''&&(isNaN(v)||v<0||v>100)){toast('分数需在 0-100 之间');return}
+  const pillT=$$('#sesPills .pill').find(p=>p.classList.contains('on'))?.dataset.s||'正常';
+  const payload={
+    code:d.code, recordId:d.scores[0]?.id,
+    score:v===''?null:parseFloat(v),
+    exam_date:$('#scDate').value, score_type:pillT, remark:$('#scR').value,
+  };
+  const r = MODE==='pc'
+    ? await POST('/api/score/save', payload)
+    : await ZKLocal.saveScore(d.code, payload);
+  const msg = r.message || (r.bestScore===null?'已记录（未出分）':(r.bestScore>=60?`已记录 ${r.bestScore} 分 · 科目通过`:`已记录 ${r.bestScore} 分 · 未及格`));
+  if(r.ok!==false){closeSheet();await refresh();toast(msg);openCourse(d.code)}
+  else toast(r.msg||'保存失败');
+}
+async function delScore(id){
+  const d=S.curCourse; if(!d) return;
+  if(!confirm('确定删除这条成绩记录？')) return;
+  const r=MODE==='pc'?await POST('/api/score/delete',{code:d.code,recordId:id}):await ZKLocal.delScore(d.code,d.scores.findIndex(x=>x.id===id));
+  if(r.ok){await refresh();toast('已删除');openCourse(d.code)}
+}
+
+// ---------- 编辑科目 ----------
+function editCourse(){
+  const d=S.curCourse; if(!d) return;
+  const st=['未开始','已报名','备考中','已考待出分','已通过','未通过'];
+  const dates=[d.planned_exam_date,'2026-10-24','2027-01-17','2027-04-18'].filter(Boolean);
+  openSheet('编辑 · '+d.name,`
+    <div style="font-size:11.5px;color:var(--t2);margin-bottom:6px">${d.code} · ${d.credits} 学分</div>
+    <div style="margin:10px 0 7px;font-size:12.5px;font-weight:700">我的备考状态</div>
+    <div class="pills" id="stPills">${st.map(s=>`<div class="pill ${stText(d.status)===s?'on':''}" data-v="${s}">${s}</div>`).join('')}</div>
+    <div style="margin:14px 0 7px;font-size:12.5px;font-weight:700">预计考试日期</div>
+    <div class="pills" id="dtPills"><div class="pill ${!d.planned_exam_date?'on':''}" data-v="">清除</div>
+      ${dates.map(x=>`<div class="pill ${d.planned_exam_date===x?'on':''}" data-v="${x}">${x}</div>`).join('')}</div>
+    <input type="date" class="inp" id="edDate" value="${d.planned_exam_date||''}" style="margin-top:8px">
+    <button class="btn btn-p btn-full" style="margin-top:16px" onclick="saveCourse()">保存</button>`);
+  $$('#stPills .pill').forEach(p=>p.onclick=()=>{$$('#stPills .pill').forEach(x=>x.classList.remove('on'));p.classList.add('on')});
+  $$('#dtPills .pill').forEach(p=>p.onclick=()=>{$$('#dtPills .pill').forEach(x=>x.classList.remove('on'));p.classList.add('on');$('#edDate').value=p.dataset.v});
+}
+async function saveCourse(){
+  const d=S.curCourse; if(!d) return;
+  const st=$$('#stPills .pill').find(p=>p.classList.contains('on'))?.dataset.v||'未开始';
+  const dt=$('#edDate').value;
+  const r=MODE==='pc'?await POST('/api/course/status',{code:d.code,status:st,planned_exam_date:dt||null,is_selected:1}):await ZKLocal.setCourse(d.code,{status:st,planned_exam_date:dt||null,is_selected:1});
+  if(r.ok){closeSheet();await refresh();toast('已保存');openCourse(d.code)}
+}
+async function saveNote(code){
+  const note=$('#memo').value;
+  const r=MODE==='pc'?await POST('/api/course/status',{code,status:S.curCourse.status||'未开始',planned_exam_date:S.curCourse.planned_exam_date,note}):await ZKLocal.setCourse(code,{note});
+  if(r.ok){S.curCourse.note=note;toast('备忘已保存 ✓')}
+}
+
+// ================= 资讯 =================
+function renderNews(){
+  let h='';
+  if(!S.news.length) h=`<div class="empty"><div class="e">📭</div>还没有资讯<br><br><button class="btn btn-p" onclick="crawlNow(true)">立即抓取</button></div>`;
+  S.news.forEach(n=>{
+    h+=`<div class="news" onclick="openArticle(${n.id})">
+      ${n.change_flag?'<div class="news-rk">!</div>':''}
+      <div class="news-t" ${n.change_flag?'style="padding-left:22px"':''}>${esc(n.title)}</div>
+      <div class="news-m"><span class="${catColor(n.category)}">${n.category}</span>
+      ${n.matched_courses?`<span class="tag">${n.matched_courses.split(',').slice(0,3).join(' ')}</span>`:''}
+      <span class="news-src">${esc(n.source_name||'')}</span><span class="news-time">${n.published_at||''}</span></div>
+    </div>`;
+  });
+  if(S.news.length) h+=`<div style="text-align:center;padding:14px 0 6px;font-size:11.5px;color:var(--t3)">共 ${S.news.length} 条 · 每天自动抓取 3 次</div>`;
+  $('#newsBody').innerHTML=h;
+}
+$$('#newsTabs .tabf').forEach(t=>t.onclick=async()=>{
+  $$('#newsTabs .tabf').forEach(x=>x.classList.remove('on'));t.classList.add('on');
+  S.newsCat=t.dataset.c; await loadNews();
+});
+
+async function openArticle(id){
+  try{
+    const n=await (MODE==='pc'?API('/api/news/detail?id='+id):ZKLocal.newsDetail(id));
+    if(!n){toast('资讯不存在');return}
+    const body=(n.content||n.summary||'（正文未抓取到，可点击下方查看原文）');
+    $('#artScroll').innerHTML=`
+      <div class="appbar">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="ib" onclick="backFromArticle()">‹</div><b style="font-size:15px">资讯详情</b></div>
+        ${n.url?`<a class="ib" href="${esc(n.url)}" target="_blank" rel="noopener" style="text-decoration:none">↗</a>`:''}
+      </div>
+      <div class="art">
+        <div class="art-t">${esc(n.title)}</div>
+        <div class="art-m">
+          <span class="${catColor(n.category)}">${n.category}</span>
+          ${n.change_flag?'<span class="tag-h">重要变动</span>':''}
+          <span class="news-src">${esc(n.source_name||'未知来源')}</span>
+          <span class="news-time">${n.published_at||''}</span>
+        </div>
+        <div class="art-b">${esc(body)}</div>
+        <div class="art-src">
+          📌 本文由本地爬虫抓取自<br><b>${esc(n.url)}</b><br>
+          抓取时间：${n.crawled_at||'—'}<br>
+          ⚠️ 内容以原文为准，本地缓存仅供离线阅读
+        </div>
+        ${n.url?`<a href="${esc(n.url)}" target="_blank" rel="noopener" style="display:block;text-align:center;margin-top:12px">
+          <button class="btn btn-p btn-full">阅读原文 ↗</button></a>`:''}
+      </div>
+      <div style="height:8px"></div>`;
+    go('article');
+  }catch(e){toast('加载失败')}
+}
+function backFromArticle(){ go('courses'); setTimeout(()=>{if(S.curCourse)openCourse(S.curCourse.code)},50) }
+function openCourseNews(code,name){ S.newsCat='全部'; loadNews().then(()=>{go('news');toast('已筛选 '+name+' 相关')}) }
+
+async function crawlNow(manual){
+  const b=$('#btnCrawl'); if(b){b.textContent='⏳';b.style.opacity='.5'}
+  $('#crawlStat').textContent='正在抓取最新资讯，通常 10-30 秒…';
+  try{
+    const r=MODE==='pc'?await POST('/api/crawl/run',{}):await ZKLocal.crawl();
+    await loadNews(); await refresh();
+    const msg=manual?`抓取完成 · 新增 ${r.added} 条 · 变动 ${r.changes} 项`:'同步完成';
+    toast(msg+' ✓');
+  }catch(e){ toast('抓取失败：'+e.message) }
+  finally{ if(b){b.textContent='🔄';b.style.opacity='1'}
+    $('#crawlStat').textContent='上次同步：'+(S.boot?.stats?.lastCrawl||'—'); }
+}
+$('#btnCrawl').onclick=()=>crawlNow(true);
+
+// ================= 日历 =================
+async function renderCal(){
+  const evts=await (MODE==='pc'?API('/api/calendar'):ZKLocal.calendar());
+  const now=new Date(), y=now.getFullYear(), m=now.getMonth();
+  const first=new Date(y,m,1), start=first.getDay()===0?0:first.getDay();
+  const days=new Date(y,m+1,0).getDate();
+  const today=fdate(now);
+  const marks={}; evts.forEach(e=>{(marks[e.date]=marks[e.date]||[]).push(e)});
+  const CN=['日','一','二','三','四','五','六'];
+  let h=`<div class="cal">
+    <div class="cal-h"><b class="num">${y} 年 ${m+1} 月</b></div>
+    <div class="cal-w">${CN.map(c=>`<span class="${c==='六'||c==='日'?'we':''}">${c}</span>`).join('')}</div>
+    <div class="cal-g">`;
+  for(let i=0;i<start;i++) h+=`<div class="cal-d out"></div>`;
+  for(let d=1;d<=days;d++){
+    const ds=`${y}-${pad(m+1)}-${pad(d)}`;
+    const w=new Date(y,m,d).getDay();
+    const mk=marks[ds]||[];
+    h+=`<div class="cal-d ${ds===today?'on':''} ${w===0||w===6?'we':''}" ${mk.length?`onclick="openCalDay('${ds}')"`:''}>
+      ${d}${mk.length?`<div class="dot ${mk[0].type==='exam'?'':'b'}"></div>`:''}</div>`;
+  }
+  h+=`</div><div class="cal-lg">
+    <span><i style="background:var(--primary)"></i>考试</span>
+    <span><i style="background:var(--accent)"></i>其他节点</span></div></div>`;
+
+  const upcoming=evts.filter(e=>daysLeft(e.date)>=0).slice(0,12);
+  h+=`<div class="st">📅 接下来</div>`;
+  if(!upcoming.length) h+=`<div class="empty"><div class="e">🗓</div>还没有设置考试日期<br>去科目页设置后这里会显示</div>`;
+  upcoming.forEach(e=>{
+    const d=new Date(e.date+'T00:00:00'), dd=daysLeft(e.date);
+    h+=`<div class="evt" ${e.code?`onclick="openCourse('${e.code}')"`:''}>
+      <div class="evt-d"><b class="num">${d.getDate()}</b><span>${d.getMonth()+1}月</span></div>
+      <div style="flex:1"><div class="evt-t">${esc(e.title)}${e.code?'':' 📌'}</div>
+      <div class="evt-s">${dd===0?'🔥 今天':dd+' 天后'} · ${esc(e.sub||'')}${e.passed?' · ✅已通过':''}</div></div>
+    </div>`;
+  });
+
+  h+=`<div class="st">💡 广东考期规律</div>
+  <div class="card"><div style="font-size:12.5px;color:var(--t2);line-height:1.85">
+    一年 <b>3 次</b>考期：<b style="color:var(--primary)">1 月 / 4 月 / 10 月</b><br>
+    报名时间约在考前 2-3 个月：<b>11 月 / 2 月 / 8 月</b><br>
+    上午 9:00-11:30 · 下午 14:30-17:00<br>
+    成绩公布：一般考后约 2 个月<br>
+    <span style="font-size:11px;color:var(--t3)">※ 具体以广东省教育考试院公告为准</span>
+  </div></div>`;
+  $('#calBody').innerHTML=h;
+}
+function openCalDay(ds){toast(ds+' 的事项已在下方显示')}
+
+// ================= 学位 =================
+function renderDegree(){
+  const d=S.boot.degree, b=S.boot;
+  let h=`
+  <div class="appbar"><h1>我的学位</h1><div class="ib" onclick="toast('可截图保存此清单')">📤</div></div>`;
+
+  const pct=Math.min(100,Math.max(0,((d.avg??0)-50)/(d.minAvg-50)*100));
+  h+=`<div class="dg">
+    <div class="dg-l">学位课程平均成绩（已过课程）</div>
+    <div class="gauge"><svg viewBox="0 0 200 100">
+      <path d="M20 95 A80 80 0 0 1 180 95" fill="none" stroke="#CBE7D9" stroke-width="15" stroke-linecap="round"/>
+      <path d="M20 95 A80 80 0 0 1 180 95" fill="none" stroke="#8FC9A9" stroke-width="15" stroke-linecap="round"
+        stroke-dasharray="234" stroke-dashoffset="${(234*(1-pct/100)).toFixed(0)}"/>
+      <line x1="103" y1="95" x2="103" y2="24" stroke="#F0657A" stroke-width="2.4" stroke-dasharray="4 3"/>
+      <text x="103" y="19" text-anchor="middle" font-size="10" fill="#F0657A" font-weight="700">${d.minAvg}分线</text>
+    </svg></div>
+    <div class="dg-n num">${d.avg??'—'}</div>
+    <div class="dg-s">${d.avg===null?'录入成绩后自动计算'
+      :(d.avg>=d.minAvg?`已达标 ✓ · 高出 ${(d.avg-d.minAvg).toFixed(1)} 分`:`还差 ${(d.minAvg-d.avg).toFixed(1)} 分`)}</div>
+    ${d.totalCredits?`<div class="dg-s" style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(95,150,125,.2)">
+      已计 ${d.countedCredits}/${d.totalCredits} 学分 · ${d.passedCourses||0} 门已过${d.failedCourses?` · ${d.failedCourses} 门未过`:''}
+      ${d.predictAvg70!==null&&d.predictAvg70!==undefined?`<br>剩余课程若全考 70 分，最终均分约 <b style="color:${d.predictAvg70>=d.minAvg?'#3F8B66':'#C93A50'}">${d.predictAvg70}</b> 分`:''}
+    </div>`:''}
+  </div>`;
+
+  if(d.advice) h+=`<div class="adv">💡 <b>提分建议：</b>${esc(d.advice)}</div>`;
+
+  // 模拟器：后端返回「科目 + 分数-均分对照表」（函数无法走 JSON），前端查表 + 线性插值
+  const targets=d.simTargets||[];
+  if(targets.length){
+    const t0=targets[0];
+    h+=`<div class="sim">
+      <div class="card-t" style="margin-bottom:6px">🎯 均分模拟器
+        <span class="more" id="simPickBtn" style="color:var(--primary);font-weight:600">切换科目 ⇄</span></div>
+      <div style="font-size:11.5px;color:var(--t2)">假设「<b id="simName" style="color:var(--primary)">${esc(t0.name)}</b>」(${t0.credits} 学分)考
+        <b class="num" id="simV" style="color:var(--primary);font-size:15px">70</b> 分，学位均分为：</div>
+      <input type="range" class="slider" id="simS" min="0" max="100" value="70" style="--pct:70%">
+      <div class="simr"><span>0</span><span>→ <b class="num" id="simR">--</b></span><span>100</span></div>
+      <div id="simHint" style="font-size:10.5px;color:var(--t3);margin-top:6px;text-align:right"></div>
+    </div>`;
+  }
+
+  h+=`<div class="st">申请条件自查（${d.passedCount}/${d.items.length} 明确达标）</div>`;
+  d.items.forEach(i=>{
+    const ic=i.pass===true?'✓':i.pass===false?'?':'…';
+    h+=`<div class="cond">
+      <div class="cond-i ${i.pass===true?'ok':'no'}">${ic}</div>
+      <div style="flex:1"><div class="cond-t">${esc(i.label)}</div>
+      <div class="cond-s">${esc(i.detail)}</div></div></div>`;
+  });
+
+  const rule=d.rule||{};
+  h+=`<div class="notice" style="margin-top:4px">
+    <div class="notice-h">⏰ 学位申请时间轴</div>
+    <li>申请时限：毕业证书签发 <b>${rule.apply_window_months||6} 个月</b>内，逾期不再受理</li>
+    <li>${esc(b.group.school_name||'')}一年两次申报：约 <b>4 月 / 10 月</b></li>
+    <li>申报系统需本人填报，材料不实将取消资格</li>
+  </div>`;
+
+  h+=`<div class="st">🎓 学位外语 6 种途径</div>
+  <div class="card">${(()=>{try{return (JSON.parse(rule.foreign_lang_options||'[]')).map((o,i)=>
+    `<div class="kv" style="${o.recommend?'background:var(--primary-xl);border-radius:10px;padding:8px 10px;margin:3px 0"':''}">
+      <div class="k" style="flex:1;line-height:1.5">${o.recommend?'⭐ ':''}${esc(o.name)}
+      ${o.note?`<div style="font-size:10.5px;color:var(--t3);font-weight:400">${esc(o.note)}</div>`:''}</div>
+    </div>`).join('')}catch(e){return '<div style="font-size:12px;color:var(--t2)">暂无数据</div>'}})()}</div>`;
+
+  h+=`<div class="st">📝 毕业论文看板</div>
+  <div class="card">
+    <div class="card-t">当前阶段：未启动<span class="more" style="color:var(--warn)">建议 2027-01 启动</span></div>
+    <div class="steps">
+      ${['方向选择','报名立项','开题报告','论文撰写','查重答辩','成绩录入'].map((s,i)=>
+        `<div class="step ${i===0?'cur':''}"><div class="step-c">${i+1}</div><div class="step-l">${s.slice(0,2)}<br>${s.slice(2)}</div></div>`).join('')}
+    </div>
+  </div>`;
+
+  h+=`<div class="st">💡 论文题目库（计算机类）</div><div id="dirList"></div>
+  <div style="text-align:center;padding:8px 0 20px;font-size:11.5px;color:var(--t3)">数据核验：${b.stats.lastCrawl?'':''}${esc(b.group.verified_at||'2026-10-01')}<br>以广东省教育考试院及主考院校公告为准</div>`;
+
+  $('#degScroll').innerHTML=h;
+
+  // ---------- 均分模拟器 ----------
+  let simIdx=0;
+  function simAvgAt(idx,v){
+    const tab=(targets[idx]||{}).table;   // 后端已按该科目算好对照表
+    if(!tab||!tab.length) return null;
+    for(let i=0;i<tab.length-1;i++){
+      const a=tab[i], b=tab[i+1];
+      if(v>=a.score&&v<=b.score){
+        const r=(v-a.score)/((b.score-a.score)||1);
+        return Math.round((a.avg+(b.avg-a.avg)*r)*10)/10;
+      }
+    }
+    return v<=tab[0].score?tab[0].avg:tab[tab.length-1].avg;
+  }
+  const ss=$('#simS');
+  if(ss&&targets.length){
+    const upd=()=>{
+      const v=+ss.value;
+      const nv=simAvgAt(simIdx,v);
+      $('#simV').textContent=v;
+      $('#simR').textContent=(nv===null?'--':nv);
+      const hint=$('#simHint');
+      if(hint){
+        if(nv===null) hint.textContent='（该科目暂无对照数据）';
+        else if(nv>=d.minAvg) hint.innerHTML=`考 ${v} 分 → 均分达标 ✓（高出 ${(nv-d.minAvg).toFixed(1)}）`;
+        else hint.innerHTML=`考 ${v} 分 → 还差 <b style="color:var(--danger)">${(d.minAvg-nv).toFixed(1)}</b> 分`;
+      }
+      ss.style.setProperty('--pct',v+'%');
+    };
+    ss.oninput=upd; upd();
+    const pb=$('#simPickBtn');
+    if(pb) pb.onclick=()=>{
+      openSheet('选择要模拟的科目', targets.map((t,i)=>`
+        <div class="wizcard" data-i="${i}" style="background:${i===simIdx?'var(--primary-xl)':'var(--surface)'};border:1.6px solid ${i===simIdx?'var(--primary)':'transparent'};border-radius:14px;padding:12px;margin-bottom:8px;cursor:pointer">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:9px">
+            <div style="flex:1"><div style="font-size:13.5px;font-weight:700">${esc(t.name)}</div>
+            <div style="font-size:11px;color:var(--t2);margin-top:2px">${t.code} · ${t.credits} 学分</div></div>
+            <span class="chip ${t.score!==null&&t.score>=60?'c-done':'c-wait'}">${t.score!==null?t.score+' 分':'未考'}</span>
+          </div></div>`).join(''));
+      $$('.wizcard').forEach(w=>w.onclick=()=>{
+        simIdx=parseInt(w.dataset.i,10);
+        const t=targets[simIdx];
+        $('#simName').textContent=t.name;
+        closeSheet(); upd();
+      });
+    };
+  }
+  // 题目库
+  (MODE==='pc'?API('/api/thesis/directions'):ZKLocal.directions()).then(ds=>{
+    if(!ds) return;
+    $('#dirList').innerHTML=ds.slice(0,12).map(d=>`
+      <div class="tdir" onclick="toast('已收藏该论文方向')">
+        <div style="font-size:20px">📄</div>
+        <div class="tdir-b"><div class="tdir-t">${esc(d.title)}</div>
+        <div class="tdir-m">${(d.tags||'').split(/[,，]/).filter(Boolean).slice(0,3).map(t=>`<span class="chip c-wait">${esc(t)}</span>`).join('')}</div></div>
+        <div class="tdir-r"><div class="stars">${'★'.repeat(d.difficulty)}${'☆'.repeat(5-d.difficulty)}</div>
+        <div class="heat">🔥 ${d.heat}</div></div>
+      </div>`).join('');
+  });
+
+  // 变动弹层按钮
+  if(b.stats.changePending>0){
+    const bar=document.createElement('div');
+    bar.className='alert';
+    bar.style.cssText='position:sticky;top:0;z-index:16';
+    bar.innerHTML=`<div class="ai">🔔</div><div style="flex:1"><div class="alert-t">有 ${b.stats.changePending} 项变动待确认</div></div><div style="color:#C93A50">›</div>`;
+    bar.onclick=openChanges;
+    $('#degScroll').prepend(bar);
+  }
+}
+
+async function openChanges(){
+  const cs=await (MODE==='pc'?API('/api/changes'):(await ZKLocal.news({limit:20})).filter(n=>!n.is_read&&n.change_flag).map(n=>({id:n.hash,title:n.title,risk_level:n.risk_level,change_type:n.change_type,detail:'来源：'+n.source_name})));
+  if(!cs.length){toast('没有待确认的变动 ✓');return}
+  openSheet('政策 / 考试变动（'+cs.length+'）', cs.map(c=>`
+    <div class="card" style="margin-bottom:9px">
+      <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:6px">
+        <span class="chip ${c.risk_level==='HIGH'?'c-fail':'c-ing'}">${c.risk_level==='HIGH'?'高风险':'需留意'}</span>
+        <span class="chip c-wait">${c.change_type}</span>
+      </div>
+      <div style="font-size:13.5px;font-weight:700;line-height:1.45;margin-bottom:5px">${esc(c.title)}</div>
+      <div style="font-size:10.5px;color:var(--t3);white-space:pre-wrap">${esc((c.detail||'').slice(0,300))}</div>
+      <div style="display:flex;gap:7px;margin-top:9px">
+        <button class="btn btn-g" style="flex:1;font-size:12px;padding:7px" onclick="ackChange(${c.id},this)">我已知晓</button>
+        ${(c.detail||'').match(/https?:\/\/\S+/)?`<a class="btn btn-o" style="flex:1;font-size:12px;padding:7px;text-decoration:none" href="${esc(c.detail.match(/https?:\/\/\S+/)[0])}" target="_blank" rel="noopener">看原文 ↗</a>`:''}
+      </div>
+    </div>`).join(''));
+}
+async function ackChange(id,btn){
+  if(MODE==='pc') await POST('/api/change/ack',{id}); else { const all=await window.ZKStore.idbAll(); const n=all.find(x=>x.hash===id); if(n){n.is_read=1;await window.ZKStore.idbPut([n]);} }
+  btn.textContent='✓ 已确认';btn.disabled=true;
+  setTimeout(async()=>{closeSheet();await refresh();toast('已确认')},700);
+}
+
+// ================= 建档 / 设置 =================
+async function openSetup(){
+  const gs=await (MODE==='pc'?API('/api/groups'):Promise.resolve(window.ZKStore.SYLLABUS.groups));
+  const b=S.boot, cur=b.group.id;
+  const priors=[['计算机类','计算机类专科 · 免加考'],['电子电工信息类','电子电工类 · 加考1门'],['工科类','工科类 · 加考2门'],['其他','其他专业 · 加考2门'],['港澳台','港澳台 · 加考2门']];
+  openSheet('报考设置',`
+    <div style="margin-bottom:8px;font-size:11.5px;color:var(--t2)">已选课程组（决定考纲与学位规则）</div>
+    ${gs.map(g=>`<div class="wizcard" data-g="${g.id}" style="background:${g.id==cur?'var(--primary-xl)':'var(--surface)'};border:1.6px solid ${g.id==cur?'var(--primary)':'transparent'};border-radius:14px;padding:12px;margin-bottom:8px;cursor:pointer">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:9px">
+        <div style="flex:1"><div style="font-size:13.5px;font-weight:700">${esc(g.school_name)}</div>
+        <div style="font-size:11px;color:var(--t2);margin-top:2px">${g.major_code} ${esc(g.major_name)} · ${g.level}</div></div>
+        <span class="chip ${g.degree_available?'c-done':'c-wait'}">${g.degree_available?'可授学位':'无学位'}</span>
+      </div>
+      <div style="font-size:10.5px;color:var(--t3);margin-top:6px">${g.required_count} 门 / ${g.total_credits} 学分 · ${g.plan_version}版 · ${g.city}</div>
+    </div>`).join('')}
+    <div style="margin:14px 0 7px;font-size:12.5px;font-weight:700">我的前置学历（决定加考科目）</div>
+    <div class="pills" id="prPills">${priors.map(([k,l])=>`<div class="pill ${b.profile.prior_category===k?'on':''}" data-v="${k}" style="font-size:11px">${l}</div>`).join('')}</div>
+    <div style="margin:14px 0 7px;font-size:12.5px;font-weight:700">昵称</div>
+    <input class="inp" id="nick" value="${esc(b.profile.nickname||'我')}" placeholder="怎么称呼你？">
+    <button class="btn btn-p btn-full" style="margin-top:16px" onclick="saveSetup()">保存设置</button>
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line)">
+      <div style="font-size:11.5px;color:var(--t2);line-height:1.7;margin-bottom:9px">
+        📡 数据源 ${b.stats.sourceOk}/${b.stats.sourceTotal} 正常 · 已抓取 ${b.stats.newsTotal} 条资讯<br>
+        🕐 上次同步：${b.stats.lastCrawl||'尚未同步'}<br>
+        💾 数据库本地存储，不上传任何数据
+      </div>
+      <button class="btn btn-o" style="width:100%" onclick="crawlNow(true);closeSheet()">🔄 立即抓取最新资讯</button>
+    </div>`);
+  $$('.wizcard').forEach(w=>w.onclick=()=>{
+    $$('.wizcard').forEach(x=>{x.style.background='var(--surface)';x.style.borderColor='transparent'});
+    w.style.background='var(--primary-xl)';w.style.borderColor='var(--primary)';
+    w.dataset.pick='1';
+  });
+  $$('#prPills .pill').forEach(p=>p.onclick=()=>{$$('#prPills .pill').forEach(x=>x.classList.remove('on'));p.classList.add('on')});
+}
+async function saveSetup(){
+  const pick=$('.wizcard[data-pick]');
+  const gid=pick?parseInt(pick.dataset.g,10):null;
+  const pr=$$('#prPills .pill').find(p=>p.classList.contains('on'))?.dataset.v;
+  const nick=$('#nick').value.trim();
+  if(MODE==='pc') await POST('/api/profile',{group_id:gid,prior_category:pr,nickname}); else await ZKLocal.setup({group_id:gid||1,prior_category:pr,nickname});
+  closeSheet(); await refresh(); toast('已保存 ✓');
+}
+
+// ================= 启动 =================
+async function loadNews(){
+  S.news=await (MODE==='pc'?API('/api/news?limit=60'+(S.newsCat!=='全部'?'&category='+encodeURIComponent(S.newsCat):'')):ZKLocal.news({limit:60,category:S.newsCat}));
+  $('#crawlStat').textContent='上次同步：'+(S.boot?.stats?.lastCrawl||'—');
+  renderNews();
+}
+async function refresh(){
+  S.boot=await (MODE==='pc'?API('/api/bootstrap'):Local.bootstrap());
+  const cr=await (MODE==='pc'?await API('/api/courses'):Local.courses());
+  S.courses=cr.courses; S.addOn=cr.addOn;
+  renderHome(); renderCourses();
+  if(S.curCourse){const d=await (MODE==='pc'?API('/api/course?code='+S.curCourse.code):ZKLocal.course(S.curCourse.code)); if(d) S.curCourse=d}
+  $('#degScroll').dataset.dirty='1';
+}
+(async()=>{
+  try{
+    MODE=await detectMode();
+    if(MODE==='mobile'){ try{ await ZKLocal.crawl(); }catch(e){ console.warn('首次抓取失败',e); } }
+    await refresh();
+    await loadNews();
+    renderCal(); renderDegree();
+    $('#boots').textContent=`已载入 ${S.courses.length} 门课程 · ${S.boot.stats.newsTotal} 条资讯`;
+    setTimeout(()=>{$('#boot').classList.add('off');setTimeout(()=>$('#boot').remove(),500)},700);
+  }catch(e){
+    $('#boots').innerHTML='<span style="color:#C93A50">启动失败：'+esc(e.message)+'</span><br><br>请确认本地服务已启动';
+    console.error(e);
+  }
+})();
+
+// 页面重新可见时刷新（爬虫后台跑，手机切回来看到新数据）
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh()});
+
+// ---------- PWA：注册 Service Worker ----------
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
+}
+// iOS 从主屏启动时提示安装
+const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
+const isStandalone=window.navigator.standalone||window.matchMedia('(display-mode: standalone)').matches;
+if(isIOS&&!isStandalone&&!localStorage.getItem('zk_ios_tip')){
+  setTimeout(()=>{
+    toast('点击 Safari 分享 → 添加到主屏幕，即可像 App 一样使用');
+    localStorage.setItem('zk_ios_tip','1');
+  },2600);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+{
+  "name": "zikao-star",
+  "version": "1.0.0",
+  "description": "🌸 自考星 - 成人自考本科备考管理工具 | 本地优先 · 零商业化 · 考纲进度 · 学位均分 · 政策变动监测",
+  "private": false,
+  "license": "MIT",
+  "keywords": [
+    "自考",
+    "self-study-exam",
+    "成人自考",
+    "学位",
+    "zikao",
+    "备考",
+    "爬虫",
+    "pwa",
+    "offline-first"
+  ],
+  "author": "自考星 contributors",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zhentong520/zikao-star.git"
+  },
+  "bugs": {
+    "url": "https://github.com/zhentong520/zikao-star/issues"
+  },
+  "homepage": "https://github.com/zhentong520/zikao-star#readme",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "seed": "node server/seed.js",
+    "seed:open": "node server/make-open-repo-db.js",
+    "crawl": "node server/crawl-once.js",
+    "daemon": "node server/daemon.js",
+    "icons": "node web/make-icons.js",
+    "sync:shared": "node scripts/sync-shared.js",
+    "cap:sync": "npm run sync:shared && cap sync",
+    "cap:android": "npm run cap:sync && cap open android",
+    "cap:ios": "npm run cap:sync && cap open ios",
+    "setup": "node server/seed.js && node web/make-icons.js",
+    "prebuild:apk": "npm run sync:shared"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.2.2",
+    "@capacitor/core": "^6.2.2"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.2.2",
+    "@capacitor/ios": "^6.2.0",
+    "@capacitor/local-notifications": "^6.1.3",
+    "@capacitor/preferences": "^6.0.4"
+  },
+  "capacitor": {
+    "webDir": "web",
+    "server": {
+      "androidScheme": "https",
+      "iosScheme": "https"
+    }
+  }
+}

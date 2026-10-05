@@ -1,0 +1,77 @@
+# ===== 隐私数据：绝对不能提交 =====
+# 你的成绩、笔记、报考记录都在这里面
+data/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+export/
+*.json.bak
+backup/
+
+# 例外：开源示例库必须提交（不含个人数据，由 make-open-repo-db.js 生成）
+!data-sample/
+!data-sample/*.db
+
+# ===== 构建产物 =====
+node_modules/
+android/build/
+android/app/build/
+android/.gradle/
+android/local.properties
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
+android/capacitor-cordova-android-plugins/
+ios/App/build/
+ios/App/Pods/
+ios/App/output/
+ios/App/App/public/
+
+# web/shared/ 由 scripts/sync-shared.js 从 shared/ 自动生成，不入库
+# （源码只有一份，避免两边改动不同步）
+web/shared/
+
+dist/
+build/
+*.apk
+*.aab
+*.ipa
+
+# ===== 工具链（本机安装的 JDK + Android SDK，约 600MB）=====
+# 位于 E:/workbuddy-workspace/build-tools，不在本项目内，
+# 但如果你把它拷进项目里，请取消下面注释
+# build-tools/
+# jdk*/
+# android-sdk/
+
+# ===== 环境变量与密钥 =====
+.env
+.env.local
+*.keystore
+*.jks
+keystore.properties
+google-services.json
+GoogleService-Info.plist
+
+# ===== IDE / 系统 =====
+.vscode/
+.idea/
+*.iml
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===== 日志 =====
+*.log
+npm-debug.log*
+yarn-error.log*
+logs/
+
+# ===== 编辑器临时文件 =====
+*.tmp
+*.bak
+*~
+.cache/
