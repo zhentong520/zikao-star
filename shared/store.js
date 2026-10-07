@@ -218,10 +218,18 @@ function getAddOnRule() {
 }
 
 /** 最高分（免考不计） */
+/**
+ * 最高分 —— 与 PC 端 server/index.js 的 bestScore 语义严格一致：
+ * 返回该科最高分（**含不及格**，免考不计）。
+ *
+ * 曾经这里错误地过滤了 <60 的分数，导致双端状态推导不一致：
+ * 录入 55 分时，PC 端显示「未通过」，手机端却显示「已考待出分」。
+ * 及格线过滤由调用方负责（computeDegree / computeProgress 各自处理）。
+ */
 function bestScore(code) {
   const arr = loadState().scoreRecords[code] || [];
   const valid = arr.filter(r => r.score !== null && r.score !== undefined && r.score_type !== '免考')
-    .map(r => Number(r.score)).filter(s => !isNaN(s) && s >= 60);
+    .map(r => Number(r.score)).filter(s => !isNaN(s));
   return valid.length ? Math.max(...valid) : null;
 }
 function allScores(code) { return loadState().scoreRecords[code] || []; }
