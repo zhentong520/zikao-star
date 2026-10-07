@@ -235,10 +235,20 @@ function simpleHash(str) {
 const GD_EXAM_MONTHS = [1, 4, 10];
 const GD_ENROLL_MONTHS = [2, 8, 11];   // 报名约在考前 2-3 个月
 
-module.exports = {
+/**
+ * 双端导出（缺一不可）：
+ * - Node 端（server/crawler）走 module.exports
+ * - WebView 端（shared/crawler-web.js）依赖 window.ZKRules
+ * 曾经只有 module.exports，导致浏览器里 ReferenceError、
+ * APK 爬虫因 window.ZKRules 缺失而静默不工作。
+ */
+const ZKRules = {
   classify, isSelfStudyRelevant, detectChange, matchCourses,
   stripTags, extractLinks, extractMainText, decodeEntities,
   calcRelevance, guessPublishedAt, simpleHash,
   CATEGORY_RULES, URGENT_PATTERNS, KNOWN_CODES,
   GD_EXAM_MONTHS, GD_ENROLL_MONTHS,
 };
+if (typeof module !== 'undefined' && module.exports) module.exports = ZKRules;
+if (typeof window !== 'undefined') window.ZKRules = ZKRules;
+else if (typeof globalThis !== 'undefined') globalThis.ZKRules = ZKRules;

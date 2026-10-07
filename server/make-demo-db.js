@@ -37,6 +37,9 @@ const g = db.prepare(`INSERT OR IGNORE INTO major_group
 g.run('440000', '080901', '计算机科学与技术', '专升本', '10574',
   '计算机科学与技术（华南师范大学课程组）', 75, 21, '2026-10-01',
   'https://zxks.eea.gd.gov.cn/', '示例数据，非官方发布');
+g.run('440000', '080901', '计算机科学与技术', '专升本', '10590',
+  '计算机科学与技术（深圳大学课程组）', 75, 21, '2026-10-01',
+  'https://cce.szu.edu.cn/', '示例数据，非官方发布');
 
 const COURSES = [
   ['001', '15040', '习近平新时代中国特色社会主义思想概论', 3, '笔试'],
@@ -61,25 +64,55 @@ const COURSES = [
   ['020', '13011', '人工智能与大数据', 6, '笔试'],
   ['021', '11689', '计算机科学与技术(本科)毕业论文', 0, '实践'],
 ];
-const gid = db.prepare('SELECT id FROM major_group LIMIT 1').get().id;
 // 列数与占位符必须严格一致：9 列 9 值
 const c = db.prepare(`INSERT OR IGNORE INTO course
   (group_id,seq,code,name,credits,course_type,exam_mode,is_thesis,sort_order)
   VALUES (?,?,?,?,?,?,?,?,?)`);
-COURSES.forEach(([seq, code, name, cr, mode], i) => {
-  c.run(gid, seq, code, name, cr, '必考', mode, code === '11689' ? 1 : 0, i + 1);
-});
+// 两个课程组都插入同一套课程（演示用途）
+const allGroups = db.prepare('SELECT id FROM major_group').all();
+for (const grp of allGroups) {
+  COURSES.forEach(([seq, code, name, cr, mode], i) => {
+    c.run(grp.id, seq, code, name, cr, '必考', mode, code === '11689' ? 1 : 0, i + 1);
+  });
+}
+const gid = db.prepare("SELECT id FROM major_group WHERE school_code='10574'").get().id;
 
 db.prepare(`INSERT OR IGNORE INTO degree_rule
   (school_code,major_code,apply_year,min_avg_score,thesis_required,thesis_min_score,
    foreign_lang_required,apply_window_months,note)
   VALUES ('10574','080901','2026',70,1,70,1,6,?)`)
   .run('示例规则，实际以主考院校最新公告为准');
+db.prepare(`INSERT OR IGNORE INTO degree_rule
+  (school_code,major_code,apply_year,min_avg_score,thesis_required,thesis_min_score,
+   foreign_lang_required,apply_window_months,note)
+  VALUES ('10590','080901','2026',70,1,70,1,6,?)`)
+  .run('示例规则，实际以主考院校最新公告为准');
 
 const src = db.prepare('INSERT OR IGNORE INTO source (key,name,url,type,province_code,school_code,category,interval_min,enabled) VALUES (?,?,?,?,?,?,?,?,1)');
 src.run('gd_eea_notice', '广东省教育考试院-通知公告', 'https://eea.gd.gov.cn/ptgk/index.html', '官方', '440000', null, '政策', 60);
+src.run('gd_eea_home', '广东省教育考试院-首页要闻', 'https://eea.gd.gov.cn/', '官方', '440000', null, '政策', 120);
 src.run('scnu_jky', '华师教育科学学院-通知公告', 'http://jky.scnu.edu.cn/index/tzgg.htm', '院校', '440000', '10574', '学位', 120);
 src.run('szu_cce', '深大继续教育学院', 'https://cce.szu.edu.cn/', '院校', '440000', '10590', '学位', 120);
+
+// 论文题目库（演示数据，与开源示例库一致的题目）
+const t = db.prepare('INSERT INTO thesis_direction (major_code,title,tags,difficulty,heat,refs) VALUES (?,?,?,?,?,?)');
+[
+  ['基于大语言模型的自适应学习路径推荐系统设计与实现', 'AI应用,教育技术', 5, 298],
+  ['面向中小企业的数据中台架构设计与性能优化实践', '系统架构,工程实践', 4, 176],
+  ['基于零信任架构的网络安全防护体系研究', '网络安全,理论', 3, 132],
+  ['基于协同过滤算法的个性化学习资源推荐系统实现', '算法,教育技术', 4, 165],
+  ['基于微服务架构的企业业务系统重构实践研究', '微服务,工程实践', 4, 188],
+  ['基于知识图谱的智能问答系统设计与实现', 'AI应用,知识图谱', 5, 302],
+  ['基于强化学习的智能仓储路径规划算法研究', '算法,优化', 5, 127],
+  ['基于PyTorch的图像风格迁移模型训练与应用', 'AI应用,计算机视觉', 4, 171],
+  ['基于Transformer的工业质检轻量化检测模型部署', 'AI应用,计算机视觉', 5, 213],
+  ['基于区块链的电子病历数据共享与隐私保护方案', '区块链,医疗', 5, 156],
+  ['基于Flutter的跨平台移动应用性能优化研究', '移动开发,性能优化', 3, 154],
+  ['基于自然语言处理的法律文书智能辅助审校系统', 'NLP,法律科技', 5, 197],
+  ['面向工业物联网的时序数据异常检测方法研究', '数据挖掘,IoT', 4, 121],
+  ['基于联邦学习的跨机构医疗数据共享方案', '联邦学习,隐私保护', 5, 143],
+  ['面向多租户SaaS平台的资源隔离与调度优化', '云原生,架构', 4, 112],
+].forEach(([title, tags, diff, heat]) => t.run('080901', title, tags, diff, heat, null));
 
 // ---------- 演示档案 ----------
 db.prepare(`INSERT INTO profile (nickname,avatar_emoji,province_code,city,group_id,prior_category,has_degree_target,plan_version)
@@ -127,7 +160,7 @@ db.prepare(`INSERT INTO change_record (change_type,risk_level,scope,title,detail
  * 这里放几条典型样例，够撑起界面即可（内容为示意，非实际公告）。
  */
 const NEWS = [
-  ['2026年10月广东省自学考试开考课程考试时间安排', '时间', 'gd_eea_notice', '广东省教育考试院', '2026-09-28', '10040,10023,13000,02324,00023,13180,13005,13013,13003,13015,13009', 1],
+  ['2026年10月广东省自学考试开考课程考试时间安排', '时间', 'gd_eea_notice', '广东省教育考试院', '2026-09-28', '15040,15043,00023,02324,13000,13180,13005,13013,13003,13015,13009', 1],
   ['关于2027年1月自学考试开考计划与使用教材的通知', '考纲', 'gd_eea_notice', '广东省教育考试院', '2026-09-15', '15040,15043,15044,00023,13000,02324,13003', 0],
   ['关于做好2026年秋季高等学历继续教育学士学位申请工作的通知', '学位', 'scnu_jky', '华南师范大学教育科学学院', '2026-09-10', '13000,00023', 1],
   ['广东省2026年10月自考课程报考时间公告（9月4日17:00截止）', '报名', 'gd_eea_notice', '广东省教育考试院', '2026-09-03', '', 1],
@@ -157,14 +190,22 @@ const CONTENT = `（演示内容，非实际公告）
 
 NEWS.forEach(([title, cat, key, src, date, codes, flag], i) => {
   const url = `https://example.gov.cn/notice/${i + 1}`;
+  // 参数顺序必须与占位符严格一致（12 个）：
+  // hash, title, url, [source_id 子查询的 key], source_name, category,
+  // summary, content, published_at, relevance, matched_courses, change_flag
   nIns.run(
     'demo' + String(i).padStart(3, '0') + (cat || 'x'),
-    title, url, src, cat,
-    title + ' —— 演示摘要',
-    CONTENT,
-    date,
-    0.95 - i * 0.03,
-    codes, flag
+    title,
+    url,
+    key,                        // source.key → 子查询定位 source_id
+    src,                        // source_name 显示名
+    cat,                        // category
+    title + ' —— 演示摘要',      // summary
+    CONTENT,                    // content
+    date,                       // published_at
+    Math.round((0.95 - i * 0.03) * 100) / 100,  // relevance
+    codes,                      // matched_courses
+    flag                        // change_flag
   );
 });
 
