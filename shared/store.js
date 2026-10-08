@@ -367,11 +367,19 @@ function computeDegree() {
     { key: 'graduate', label: '毕业证书已取得', pass: false, detail: '全部课程通过后可申请' },
   ];
 
+  /**
+   * 返回字段名与 PC 端 server/index.js computeDegree 严格对齐：
+   * items=条件清单、passedCount/pendingCount=条件达标/待定数。
+   * 曾经叫 conditions/passedConditions，renderDegree 读 d.items.length
+   * 直接 TypeError（APK 启动崩），PC 端却正常——双端字段名必须一字不差。
+   */
   return {
     avg, minAvg, countedCredits: earnedCredits, totalCredits,
     passedCourses: passedItems.length, failedCourses: failedCount,
-    predictAvg70: p70, simTargets, advice, conditions,
-    passedConditions: conditions.filter(c => c.pass === true).length,
+    predictAvg70: p70, simTargets, advice,
+    items: conditions,
+    passedCount: conditions.filter(c => c.pass === true).length,
+    pendingCount: conditions.filter(c => c.pass === null).length,
     rule: SYLLABUS.degreeRule,
   };
 }

@@ -103,7 +103,15 @@ function ok(name, cond, detail = '') {
   const mono = d.simTargets.every(t => t.table.every((r, i) => i === 0 || r.avg >= t.table[i - 1].avg - 0.05));
   ok('模拟器单调递增', mono);
   ok('建议文案', typeof d.advice === 'string' && d.advice.length > 10);
-  ok('条件自查 4 项', d.conditions.length === 4);
+  ok('条件自查 4 项（字段名 items 对齐 PC）', Array.isArray(d.items) && d.items.length === 4);
+  // 双端字段硬对齐：PC 端 server/index.js computeDegree/computeProgress 的返回字段
+  // 移动端必须全部提供——renderDegree/renderHome 共用同一套渲染代码，
+  // 缺一个字段就是 APK 启动崩（v1.0.2 的 items 事故）
+  const PC_DEGREE_FIELDS=['avg','minAvg','items','passedCount','pendingCount','rule','advice','countedCredits','totalCredits','passedCourses','failedCourses','predictAvg70','simTargets'];
+  const PC_PROGRESS_FIELDS=['earned','total','passedCount','failCount','requiredCount','percent','thesisDone','thesisScore'];
+  const missDeg=PC_DEGREE_FIELDS.filter(f=>!(f in d));
+  ok('degree 字段与 PC 端完全对齐（'+PC_DEGREE_FIELDS.length+' 项）', missDeg.length===0, '缺: '+missDeg.join(','));
+  ok('passedCount/pendingCount 对齐 PC 字段', typeof d.passedCount === 'number' && typeof d.pendingCount === 'number');
 
   /* ---- 4. 进度 ---- */
   console.log('\n━━━ 4. 毕业进度 ━━━');
@@ -111,6 +119,8 @@ function ok(name, cond, detail = '') {
   ok('进度百分比 0-100', p.percent >= 0 && p.percent <= 100, p.percent);
   ok('已过学分 ≤ 总学分', p.earned <= p.total);
   ok('论文状态独立', typeof p.thesisDone === 'boolean');
+  const missProg=PC_PROGRESS_FIELDS.filter(f=>!(f in p));
+  ok('progress 字段与 PC 端完全对齐（'+PC_PROGRESS_FIELDS.length+' 项）', missProg.length===0, '缺: '+missProg.join(','));
 
   /* ---- 5. 规则层（双端共用） ---- */
   console.log('\n━━━ 5. 规则层 rules.js ━━━');
