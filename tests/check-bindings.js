@@ -108,6 +108,22 @@ console.log('🧪 前端绑定自检\n');
   ok('rules.js 挂载 window.ZKRules（APK 爬虫依赖）', /window\.ZKRules\s*=\s*ZKRules/.test(rulesJs));
 }
 
+/* ---- onclick 全量审计：每个按钮的处理函数必须真实存在 ---- */
+{
+  const KEYWORDS = new Set(['if', 'for', 'while', 'return', 'confirm']);
+  const fns = new Set();
+  for (const m of html.matchAll(/onclick="([A-Za-z_$][\w$]*)\s*\(/g)) fns.add(m[1]);
+  const missing = [...fns].filter(fn => !KEYWORDS.has(fn) && !new RegExp('function\\s+' + fn + '\\b').test(html));
+  console.log(`onclick 审计：${fns.size} 个按钮处理函数，缺失 ${missing.length} 个`);
+  ok('所有 onclick 处理函数均已定义', missing.length === 0, '缺失: ' + missing.join(', '));
+
+  // 假动作审计：toast 文案用完成时态（"已xx"）= 欺骗性按钮，禁止。
+  // 提示类文案（如"可截图保存"）允许。
+  const fake = [...html.matchAll(/onclick="toast\('([^']+)'\)"/g)]
+    .map(m => m[1]).filter(t => /^已|^完成|成功$/.test(t));
+  ok('无「完成时态」的假按钮（只弹提示却声称已操作）', fake.length === 0, fake.join(' | '));
+}
+
 /* ---- 启动链路关键点 ---- */
 {
   ok('detectMode 存在', /async function detectMode/.test(html));

@@ -27,6 +27,8 @@ const DEFAULT_STATE = {
   // sourceLog: { [sourceKey]: ISO时间 }  用于自适应提频
   sourceLog: {},
   settings: { autoCrawl: true, lastCrawlAt: '', crawlMultiplier: 1 },
+  // favDirections: 收藏的论文方向标题
+  favDirections: [],
 };
 
 /* ============ 状态读写 ============ */
@@ -436,6 +438,18 @@ function recordSourceCrawl(key, ok) {
   saveState();
 }
 
+/** 论文方向收藏（title 唯一标识） */
+function toggleFavDirection(title) {
+  const s = loadState();
+  s.favDirections = s.favDirections || [];
+  const i = s.favDirections.indexOf(title);
+  if (i >= 0) s.favDirections.splice(i, 1);
+  else s.favDirections.push(title);
+  saveState();
+  return s.favDirections.includes(title);
+}
+function getFavDirections() { return loadState().favDirections || []; }
+
 /* ============ 导入导出（与 PC 端互通） ============ */
 function exportAll() {
   return JSON.stringify({
@@ -468,7 +482,7 @@ window.ZKStore = {
   getExamCourses, getCreditsCourses,
   computeProgress, computeDegree,
   setCourseStatus, saveScore, deleteScore,
-  idbAll, idbPut, idbClear, recordSourceCrawl,
+  idbAll, idbPut, idbClear, recordSourceCrawl, toggleFavDirection, getFavDirections,
   exportAll, importData, resetAll,
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = window.ZKStore;

@@ -339,6 +339,7 @@ body{font-family:"PingFang SC","HarmonyOS Sans","Microsoft YaHei",-apple-system,
   <div class="boott">自考星</div>
   <div class="boots" id="boots">正在读取你的备考数据…</div>
 </div>
+<div id="tg"></div>
 
 <div id="app">
   <div class="sbar"><span class="num" id="clock">--:--</span><span>📶 🔋</span></div>
@@ -449,7 +450,7 @@ setInterval(tick,10000);tick();
 
 // ---------- Toast ----------
 let tt;
-function toast(m){const t=$('#tg');t.textContent=m;t.style.opacity='1';t.style.top='calc(var(--safe-t) + 16px)';
+function toast(m){const t=$('#tg')||(document.body.appendChild(Object.assign(document.createElement('div'),{id:'tg'})),$('#tg'));t.textContent=m;t.style.opacity='1';t.style.top='calc(var(--safe-t) + 16px)';
   clearTimeout(tt);tt=setTimeout(()=>{t.style.opacity='0';t.style.top='calc(var(--safe-t) + 8px)'},1900);
   if(!t.parentNode)document.body.appendChild(t);}
 
@@ -539,7 +540,8 @@ const Local = {
       parent_code:c.parent||null, status:S.effectiveStatus(code),
       bestScore:S.bestScore(code), scores:S.allScores(code),
       pass:(S.bestScore(code)??-1)>=60, news, exam:null,
-      planned_exam_date:uc.planned_exam_date||null, note:uc.note||''};
+      planned_exam_date:uc.planned_exam_date||null, note:uc.note||'',
+      remind7:uc.remind7, remind1:uc.remind1, remind0:uc.remind0};
   },
   async news(opts={}){
     const all=await window.ZKStore.idbAll();
@@ -758,7 +760,7 @@ async function openCourse(code){
       <button class="btn btn-p" onclick="openScore()">${d.scores.length?'修改成绩':'录入成绩'}</button>`;
     $$('#detailScroll .sw').forEach(s=>s.onclick=()=>s.classList.toggle('on'));
     go('detail');
-  }catch(e){toast('加载失败：'+e.message)}
+  }catch(e){document.title='OPENFAIL:'+e.message;toast('加载失败：'+e.message)}
 }
 function detailHTML(d){
   const nd=d.planned_exam_date?daysLeft(d.planned_exam_date):null;
@@ -822,10 +824,10 @@ function detailHTML(d){
   h+=`<div style="text-align:center;font-size:12px;color:var(--primary);font-weight:600;padding:4px 0 6px" onclick="openCourseNews('${d.code}','${esc(d.name)}')">查看本科目全部资讯 ›</div>`;
 
   h+=`<div class="card"><div class="card-t">⏰ 提醒</div>
-    <div class="rm"><div class="rm-i">📖</div><div><div class="rm-t">考前 7 天提醒</div><div class="rm-s num">${d.planned_exam_date?fdate(new Date(new Date(d.planned_exam_date).getTime()-7*864e5)):'待设置考试日期'}</div></div><div class="sw on"></div></div>
-    <div class="rm"><div class="rm-i">🔥</div><div><div class="rm-t">考前 1 天提醒</div><div class="rm-s num">${d.planned_exam_date?fdate(new Date(new Date(d.planned_exam_date).getTime()-864e5)):'待设置'}</div></div><div class="sw on"></div></div>
-    <div class="rm"><div class="rm-i">📊</div><div><div class="rm-t">成绩公布</div><div class="rm-s">广东一般考后约 2 个月</div></div><div class="sw on"></div></div>
-    <button class="btn btn-g btn-full" style="margin-top:11px" onclick="toast('已加入系统日历 📅')">📅 添加到系统日历</button>
+    <div class="rm" onclick="toggleRemind('${d.code}',7)"><div class="rm-i">📖</div><div><div class="rm-t">考前 7 天提醒</div><div class="rm-s num">${d.planned_exam_date?fdate(new Date(new Date(d.planned_exam_date).getTime()-7*864e5)):'待设置考试日期'}</div></div><div class="sw ${d.remind7===false?'':'on'}"></div></div>
+    <div class="rm" onclick="toggleRemind('${d.code}',1)"><div class="rm-i">🔥</div><div><div class="rm-t">考前 1 天提醒</div><div class="rm-s num">${d.planned_exam_date?fdate(new Date(new Date(d.planned_exam_date).getTime()-864e5)):'待设置'}</div></div><div class="sw ${d.remind1===false?'':'on'}"></div></div>
+    <div class="rm" onclick="toggleRemind('${d.code}',0)"><div class="rm-i">📊</div><div><div class="rm-t">考试当天提醒</div><div class="rm-s num">${d.planned_exam_date?fdate(new Date(d.planned_exam_date+'T08:30:00')):'待设置'}</div></div><div class="sw ${d.remind0===false?'':'on'}"></div></div>
+    <button class="btn btn-g btn-full" style="margin-top:11px" onclick="setReminders('${d.code}')">🔔 应用提醒设置（安排系统通知）</button>
   </div>
 
   <div class="st">⚠️ 考试注意事项</div>
@@ -955,6 +957,96 @@ async function saveNote(code){
   const note=$('#memo').value;
   const r=MODE==='pc'?await POST('/api/course/status',{code,status:S.curCourse.status||'未开始',planned_exam_date:S.curCourse.planned_exam_date,note}):await ZKLocal.setCourse(code,{note});
   if(r.ok){S.curCourse.note=note;toast('备忘已保存 ✓')}
+}
+
+// ---------- 考前提醒（APK：系统通知；PC/PWA：.ics 日历文件） ----------
+function courseName(code){
+  const c=S.getExamCourses?S.getExamCourses().find(x=>x.code===code):null;
+  return c?c.name:code;
+}
+/** 生成提醒时间点列表（过滤已过去的） */
+function reminderTimes(plannedDate,uc){
+  const out=[];
+  const base=new Date(plannedDate+'T08:30:00');
+  const mk=(days,label,icon)=>{
+    if(uc['remind'+days]===false) return;          // 用户关掉的跳过
+    const at=new Date(base.getTime()-days*864e5);
+    if(at.getTime()<=Date.now()) return;            // 过去的时间不安排
+    out.push({days,label,icon,at});
+  };
+  mk(7,'考前 7 天','📖'); mk(1,'考前 1 天','🔥'); mk(0,'考试当天','📊');
+  return out;
+}
+/** APK：排系统通知；PC/PWA：下载 .ics */
+async function setReminders(code){
+  const uc=(window.ZKStore.loadState().userCourse[code])||{};
+  const d=uc.planned_exam_date;
+  if(!d){toast('请先在「编辑科目」中设置考试日期');return}
+  const times=reminderTimes(d,uc);
+  if(!times.length){toast('没有可安排的提醒（时间已过或全部关闭）');return}
+  const name=courseName(code);
+
+  if(IS_Capacitor&&window.Capacitor.Plugins.LocalNotifications){
+    try{
+      const LP=window.Capacitor.Plugins.LocalNotifications;
+      const perm=await LP.requestPermissions();
+      if(perm.display&&perm.display!=='granted'){toast('未获通知权限，请在系统设置中允许通知');return}
+      const baseId=parseInt(code,10)%100000*10;
+      // 先清掉该科目旧提醒
+      await LP.cancel({notifications:times.map((_,k)=>({id:baseId+k}))}).catch(()=>{});
+      const notifs=times.map((t,k)=>({
+        id:baseId+k,
+        title:t.icon+' '+t.label+'：'+name,
+        body:code+' '+name+' · 08:30 开考，记得带身份证和准考证',
+        schedule:{at:t.at,allowWhileIdle:true},
+      }));
+      await LP.schedule({notifications:notifs});
+      toast('已安排 '+notifs.length+' 个考前提醒 🔔');
+    }catch(e){toast('提醒设置失败：'+(e.message||e))}
+  }else{
+    // PC / PWA：生成 .ics，可导入 Outlook/Google/系统日历
+    try{
+      const ics=buildICS(code,name,d,times);
+      if(window.__CAPTURE_ICS){window.__LAST_ICS=ics}   // autotest 钩子
+      const blob=new Blob([ics],{type:'text/calendar;charset=utf-8'});
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download='zikao-'+code+'.ics';
+      document.body.appendChild(a);a.click();a.remove();
+      toast('日历文件已下载（'+times.length+' 条），双击导入系统日历 📅');
+    }catch(e){toast('生成日历文件失败：'+(e.message||e))}
+  }
+}
+function buildICS(code,name,date,times){
+  const L=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//ZikaoStar//CN','CALSCALE:GREGORIAN'];
+  times.forEach((t,i)=>{
+    const dt=(x)=>x.getFullYear()+String(x.getMonth()+1).padStart(2,'0')+String(x.getDate()).padStart(2,'0')+'T'+String(x.getHours()).padStart(2,'0')+String(x.getMinutes()).padStart(2,'0')+'00';
+    L.push('BEGIN:VEVENT',
+      'UID:zikao-'+code+'-'+t.days+'@zikaostar',
+      'DTSTART:'+dt(t.at),
+      'DTEND:'+dt(new Date(t.at.getTime()+30*60000)),
+      'SUMMARY:'+t.icon+' '+t.label+'：'+name,
+      'DESCRIPTION:'+code+' '+name+' · 明日 08:30 开考，带身份证和准考证',
+      'BEGIN:VALARM','TRIGGER:-PT30M','ACTION:DISPLAY','DESCRIPTION:自考提醒','END:VALARM',
+      'END:VEVENT');
+  });
+  L.push('END:VCALENDAR');
+  return L.join('\r\n');
+}
+async function toggleRemind(code,days){
+  const st=window.ZKStore.loadState();
+  const uc=st.userCourse[code]||{};
+  const key='remind'+days;
+  const on=uc[key]===false;   // 当前是关 → 打开
+  window.ZKStore.setCourseStatus(code,{[key]:on});
+  toast(on?('已开启考前 '+(days||0)+' 天提醒'):'已关闭该提醒');
+  openCourse(code);           // 重渲染开关状态
+}
+/** 收藏论文方向（localStorage，本设备生效） */
+function toggleFavDirection(title){
+  const on=window.ZKStore.toggleFavDirection(title);
+  toast(on?'已收藏 ⭐（本设备）':'已取消收藏');
+  renderDegree();             // 重渲染列表标记
 }
 
 // ================= 资讯 =================
@@ -1206,13 +1298,14 @@ function renderDegree(){
   // 题目库
   (MODE==='pc'?API('/api/thesis/directions'):ZKLocal.directions()).then(ds=>{
     if(!ds) return;
+    const favs=S.favDirections||[];
     $('#dirList').innerHTML=ds.slice(0,12).map(d=>`
-      <div class="tdir" onclick="toast('已收藏该论文方向')">
+      <div class="tdir" onclick="toggleFavDirection('${esc(d.title).replace(/'/g,'&#39;')}')">
         <div style="font-size:20px">📄</div>
         <div class="tdir-b"><div class="tdir-t">${esc(d.title)}</div>
         <div class="tdir-m">${(d.tags||'').split(/[,，]/).filter(Boolean).slice(0,3).map(t=>`<span class="chip c-wait">${esc(t)}</span>`).join('')}</div></div>
         <div class="tdir-r"><div class="stars">${'★'.repeat(d.difficulty)}${'☆'.repeat(5-d.difficulty)}</div>
-        <div class="heat">🔥 ${d.heat}</div></div>
+        <div class="heat">${favs.includes(d.title)?'⭐':''} 🔥 ${d.heat}</div></div>
       </div>`).join('');
   });
 
@@ -1313,21 +1406,35 @@ async function refresh(){
 }
 (async()=>{
   try{
-    MODE=await detectMode();
-    if(MODE==='mobile'){ try{ await ZKLocal.crawl(); }catch(e){ console.warn('首次抓取失败',e); } }
+    // ?autotest=1：端到端自测模式——强制 mobile（跳过后端探测与自动抓取），
+    // 启动后自动执行全部按钮链路并把结果写进 DOM（#autotest）与 document.title，
+    // 供无头浏览器 dump 验收。正常访问完全不受影响。
+    const URLP=new URLSearchParams(location.search);
+    const AUTOTEST=URLP.get('autotest')==='1';
+    if(AUTOTEST){
+      // headless + virtual-time 下真实 IDB open 会挂起（真实 WebView 无此问题）。
+      // window.indexedDB=undefined 无法生效（只读属性），直接打补丁短路 store 的 IDB 层。
+      window.ZKStore.idbAll=async()=>[];
+      window.ZKStore.idbPut=async()=>false;
+      window.ZKStore.idbClear=async()=>false;
+    }
+    MODE=AUTOTEST?'mobile':await detectMode();
+    if(MODE==='mobile'&&!AUTOTEST){ try{ await ZKLocal.crawl(); }catch(e){ console.warn('首次抓取失败',e); } }
     await refresh();
     await loadNews();
     renderCal(); renderDegree();
     // 截图模式：?shot=courses|degree|cal|news|course  直接切到指定页
     // 仅用于生成 README 界面图，正常访问不受影响
-    const shot=new URLSearchParams(location.search).get('shot');
+    const shot=URLP.get('shot');
     if(shot){
       if(shot.startsWith('course=')) openCourse(shot.split('=')[1]);
       else if(['courses','degree','cal','news','article'].includes(shot)) go(shot);
     }
+    if(AUTOTEST){ runAutotest(); return; }   // 自测模式不隐藏 boot 层
     $('#boots').textContent=`已载入 ${S.courses.length} 门课程 · ${S.boot.stats.newsTotal} 条资讯`;
     setTimeout(()=>{$('#boot').classList.add('off');setTimeout(()=>$('#boot').remove(),500)},700);
   }catch(e){
+    document.title='BOOTFAIL:'+e.message;
     $('#boots').innerHTML='<span style="color:#C93A50">启动失败：'+esc(e.message)+'</span><br><br>请确认本地服务已启动';
     console.error(e);
   }
@@ -1335,6 +1442,75 @@ async function refresh(){
 
 // 页面重新可见时刷新（爬虫后台跑，手机切回来看到新数据）
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh()});
+
+// ---------- 端到端自测（?autotest=1）：自动执行全部按钮链路 ----------
+const sleep0=(ms)=>new Promise(r=>setTimeout(r,ms));
+async function runAutotest(){
+  const R=[]; const T=(n,ok,d)=>{R.push({n,ok:!!ok,d:d||''});document.title='STEP:'+n;};
+  try{
+    T('MODE=mobile（无后端自动降级）',MODE==='mobile');
+    // 1. 状态 + 考试日期
+    await ZKLocal.setCourse('02324',{status:'已报名',planned_exam_date:'2026-11-01'});
+    const uc1=window.ZKStore.loadState().userCourse['02324']||{};
+    T('编辑科目：状态与考试日期已保存',uc1.status==='已报名'&&uc1.planned_exam_date==='2026-11-01');
+    // 2. 备忘（真实走 openCourse → DOM → saveNote）
+    document.title='STEP:openCourse';
+    await openCourse('02324');
+    document.title='STEP:memoCheck';
+    const ds=document.getElementById('detailScroll');
+    T('科目详情渲染（memo 输入框存在）',!!document.getElementById('memo'),
+      'detailScroll='+(ds?ds.innerHTML.length+'字':'null')+' curCourse='+(S.curCourse?S.curCourse.code:'null'));
+    document.title='STEP:saveNote';
+    const memoEl=document.getElementById('memo');
+    if(memoEl){memoEl.value='冒烟测试备忘';await saveNote('02324')}
+    T('备忘已持久化',(window.ZKStore.loadState().userCourse['02324']||{}).note==='冒烟测试备忘');
+    // 3. 成绩录入 + 删除（走 sheet 内部逻辑等价调用）
+    await ZKLocal.saveScore('02324',{score:77,exam_date:'2026-10-25',score_type:'正常'});
+    T('成绩录入后 bestScore=77',window.ZKStore.bestScore('02324')===77);
+    const scores=window.ZKStore.allScores('02324');
+    await ZKLocal.delScore('02324',scores.length-1);
+    T('成绩删除后恢复',window.ZKStore.bestScore('02324')!==77);
+    // 4. 提醒：未设考试日期 → 应提示拦截
+    await ZKLocal.setCourse('13004',{status:'未开始',planned_exam_date:null});
+    await setReminders('13004');   // 无 toast 断言，验证不抛错
+    T('提醒：无考试日期时安全拦截（不抛错）',true);
+    // 5. 提醒：已设日期 + PC 分支 → 生成 .ics（捕获内容）
+    await ZKLocal.setCourse('02324',{status:'已报名',planned_exam_date:'2026-11-01'});
+    window.__CAPTURE_ICS=true; window.__LAST_ICS='';
+    await setReminders('02324');
+    T('提醒：PC 分支生成 .ics 日历文件',/BEGIN:VCALENDAR/.test(window.__LAST_ICS||'')&&/BEGIN:VEVENT/.test(window.__LAST_ICS||''));
+    T('提醒：.ics 含考试科目与 UID',/UID:zikao-02324/.test(window.__LAST_ICS||''));
+    // 6. 开关
+    await toggleRemind('02324',7);   // 默认开 → 关
+    T('提醒开关可切换（remind7=false）',(window.ZKStore.loadState().userCourse['02324']||{}).remind7===false);
+    await toggleRemind('02324',7);   // 恢复开
+    // 7. 资讯 / 学位 / 日历
+    const news=await ZKLocal.news({limit:5});
+    T('资讯列表可读（autotest 下 IDB 短路为数组）',Array.isArray(news));
+    const dg=window.ZKStore.computeDegree();
+    T('学位计算 items 对齐',Array.isArray(dg.items)&&dg.items.length===4);
+    const cal=await ZKLocal.calendar();
+    T('日历事件含已报名科目',Array.isArray(cal)&&cal.some(e=>e.code==='02324'));
+    const dirs=await ZKLocal.directions();
+    T('论文题目库可读',Array.isArray(dirs)&&dirs.length>=10);
+    // 8. 论文收藏（真实现）
+    const favTitle=dirs[0].title;
+    const after1=window.ZKStore.toggleFavDirection(favTitle);
+    T('论文收藏切换：收藏生效',after1===true&&window.ZKStore.getFavDirections().includes(favTitle));
+    const after2=window.ZKStore.toggleFavDirection(favTitle);
+    T('论文收藏切换：取消生效',after2===false&&!window.ZKStore.getFavDirections().includes(favTitle));
+    // 清理测试痕迹
+    await ZKLocal.setCourse('02324',{status:'未开始',planned_exam_date:null,note:''});
+  }catch(e){ R.push({n:'异常中断：'+e.message,ok:false}); }
+  const pass=R.filter(x=>x.ok).length;
+  const allPass=pass===R.length;
+  document.title='AUTOTEST '+pass+'/'+R.length+(allPass?':PASS':':FAIL');
+  const box=document.createElement('div');
+  box.id='autotest';
+  box.style.cssText='position:fixed;inset:0;z-index:99999;background:#fff;color:#111;font:13px/1.7 Consolas,monospace;padding:12px;overflow:auto';
+  box.innerHTML='<b style="font-size:16px">'+(allPass?'🎉 全部通过':'❌ 存在失败')+'（'+pass+'/'+R.length+'）</b><br>'+R.map(x=>(x.ok?'✅':'❌')+' '+x.n+(x.d?' —— '+x.d:'')).join('<br>');
+  document.body.appendChild(box);
+}
 
 // ---------- PWA：注册 Service Worker ----------
 if('serviceWorker' in navigator){
