@@ -556,6 +556,23 @@ const Local = {
   },
 };
 const ZKLocal = {
+  async news(opts={}){
+    // 资讯列表（首页/资讯页共用），数据在 IndexedDB
+    const all=await window.ZKStore.idbAll();
+    let list=all;
+    if(opts.category&&opts.category!=='全部') list=list.filter(n=>n.category===opts.category);
+    return list.sort((a,b)=>(b.change_flag-a.change_flag)||(b.relevance-a.relevance))
+      .slice(0,opts.limit||60)
+      .map(n=>({...n,len:(n.content||'').length}));
+  },
+  async newsDetail(id){
+    const all=await window.ZKStore.idbAll();
+    return all.find(n=>n.hash===id)||null;
+  },
+  async course(code){
+    // 转发 Local.course（科目详情：档案+成绩+状态+资讯TOP3）
+    return Local.course(code);
+  },
   async newsFor(code){
     const all=await window.ZKStore.idbAll();
     const kw=code;
