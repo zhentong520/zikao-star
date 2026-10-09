@@ -90,6 +90,8 @@ db.prepare(`INSERT OR IGNORE INTO degree_rule
 
 const src = db.prepare('INSERT OR IGNORE INTO source (key,name,url,type,province_code,school_code,category,interval_min,enabled) VALUES (?,?,?,?,?,?,?,?,1)');
 src.run('gd_eea_notice', '广东省教育考试院-通知公告', 'https://eea.gd.gov.cn/ptgk/index.html', '官方', '440000', null, '政策', 60);
+src.run('gd_eea_tzgg', '广东省教育考试院-通知公告(移动版)', 'https://eea.gd.gov.cn/tzgg/mindex.html', '官方', '440000', null, '政策', 90);
+src.run('gd_5184_zk', '广东考试服务网-自考地级市', 'https://5184.com/h-nr--0_31_21.html', '聚合', '440000', null, '报名', 120);
 src.run('gd_eea_home', '广东省教育考试院-首页要闻', 'https://eea.gd.gov.cn/', '官方', '440000', null, '政策', 120);
 src.run('scnu_jky', '华师教育科学学院-通知公告', 'http://jky.scnu.edu.cn/index/tzgg.htm', '院校', '440000', '10574', '学位', 120);
 src.run('szu_cce', '深大继续教育学院', 'https://cce.szu.edu.cn/', '院校', '440000', '10590', '学位', 120);

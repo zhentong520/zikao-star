@@ -190,6 +190,8 @@ function seed() {
   // 省级官方
   srcIns.run('gd_eea_notice', '广东省教育考试院-通知公告', 'https://eea.gd.gov.cn/ptgk/index.html', '官方', '440000', null, '政策', 60, '考试安排/报名/成绩公布等核心公告');
   srcIns.run('gd_eea_home',  '广东省教育考试院-首页要闻', 'https://eea.gd.gov.cn/', '官方', '440000', null, '政策', 120, '自考相关政策与通知');
+  srcIns.run('gd_eea_tzgg',  '广东省教育考试院-通知公告(移动版)', 'https://eea.gd.gov.cn/tzgg/mindex.html', '官方', '440000', null, '政策', 90, '移动版轻量列表，2026-10 实测提取 4 条相关');
+  srcIns.run('gd_5184_zk',   '广东考试服务网-自考地级市', 'https://5184.com/h-nr--0_31_21.html', '聚合', '440000', null, '报名', 120, '全省 21 地市自考通知聚合，2026-10 实测提取 20 条相关');
   // 院校官方
   srcIns.run('scnu_jky', '华师教育科学学院-通知公告', 'http://jky.scnu.edu.cn/index/tzgg.htm', '院校', '440000', '10574', '学位', 120, '学位申请通知（含条件与时间轴）；注：jxj.scnu.edu.cn 已迁移，此为现行域名');
   srcIns.run('scnu_home', '华师主页-教育快讯', 'https://www.scnu.edu.cn/', '院校', '440000', '10574', '其他', 240, '兜底源');
