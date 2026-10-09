@@ -144,6 +144,10 @@ const SYLLABUS = {
     { key: 'gd_eea_notice', name: '广东省教育考试院-通知公告', url: 'https://eea.gd.gov.cn/ptgk/index.html', type: '官方', category: '政策', interval_min: 60 },
     { key: 'gd_eea_tzgg', name: '广东省教育考试院-通知公告(移动版)', url: 'https://eea.gd.gov.cn/tzgg/mindex.html', type: '官方', category: '政策', interval_min: 90 },
     { key: 'gd_5184_zk', name: '广东考试服务网-自考地级市', url: 'https://5184.com/h-nr--0_31_21.html', type: '聚合', category: '报名', interval_min: 120 },
+    // RSSHub 自部署实例（阿里云深圳 ECS）：标准 RSS、社区维护路由，站点改版零成本
+    // type:'rss' → crawler-web.js 走 crawlRSS 解析分支
+    { key: 'rsshub_eea_kszs', name: '考试院RSS-考试招生', url: 'http://47.112.10.43:1200/gov/gd/eea/kszs', type: 'rss', category: '政策', interval_min: 60 },
+    { key: 'rsshub_eea_ywdt', name: '考试院RSS-要闻动态', url: 'http://47.112.10.43:1200/gov/gd/eea/ywdt', type: 'rss', category: '政策', interval_min: 120 },
     { key: 'gd_eea_home', name: '广东省教育考试院-首页要闻', url: 'https://eea.gd.gov.cn/', type: '官方', category: '政策', interval_min: 120 },
     { key: 'scnu_jky', name: '华师教育科学学院-通知公告', url: 'http://jky.scnu.edu.cn/index/tzgg.htm', type: '院校', category: '学位', interval_min: 120 },
     { key: 'szu_cce', name: '深大继续教育学院', url: 'https://cce.szu.edu.cn/', type: '院校', category: '学位', interval_min: 120 },
