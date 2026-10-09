@@ -161,7 +161,7 @@
       const hash = R.simpleHash(url);
       if (existingHashes.has(hash)) return { inserted: false, reason: 'dup' };
 
-      let title = fallbackTitle;
+      let title = fallbackTitle.replace(/\s+/g,' ').trim();   // 提取的标题常带尾部空白
       // 聚合页纠正：详情页 title 若被截断成泛化词，用列表页文字
       if (!/专业信息$|专业目录|专业列表/.test(title) && /专业信息$|专业目录|专业列表/.test(fallbackTitle)) {
         title = fallbackTitle;
