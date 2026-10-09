@@ -130,6 +130,13 @@
       const toSave = [];
       try {
         const html = await fetchHtml(source.url);
+        // RSS/Atom 源（RSSHub 自部署实例等）：标准格式，社区维护，站点改版零成本
+        if (source.type === 'rss' || /<(rss|feed)\b/i.test(html.slice(0, 800))) {
+          const r = this.crawlRSS(source, html, existingHashes, toSave);
+          if (toSave.length) await this.store.idbPut(toSave);
+          this.stat.ok++; this.stat.found += r.found; this.stat.added += r.added;
+          return { ok: true, found: r.found, added: r.added, name: source.name };
+        }
         const links = R.extractLinks(html, source.url);
         const candidates = links.filter(l => {
           if (/\.(pdf|doc|docx|xls|xlsx|zip|rar|jpg|png|gif)$/i.test(l.url)) return false;
@@ -154,6 +161,60 @@
       }
       await sleep(150 + Math.random() * 150);
       return { ok: true, found, added, name: source.name };
+    }
+
+    /** RSS/Atom 源抓取：解析 item 入库（RSSHub 描述常含正文，无需延迟补抓） */
+    crawlRSS(source, xml, existingHashes, toSave) {
+      const items = xml.match(/<(item|entry)\b[\s\S]*?<\/(item|entry)>/gi) || [];
+      let found = 0, added = 0;
+      for (const it of items.slice(0, 15)) {
+        const pick = (tag) => {
+          const m = it.match(new RegExp('<' + tag + '\\b[^>]*>([\\s\\S]*?)</' + tag + '>', 'i')) ||
+                    it.match(new RegExp('<' + tag + '\\b[^>]*href=["\\\']([^"\\\']+)["\\\'][^>]*>', 'i'));
+          if (!m) return '';
+          return m[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').replace(/<[^>]+>/g, '').trim();
+        };
+        const title = pick('title').replace(/\s+/g, ' ');
+        const link = pick('link') || pick('guid');
+        if (!title || !link) continue;
+        found++;
+        const hash = R.simpleHash(link);
+        if (existingHashes.has(hash)) continue;
+        if (!R.isSelfStudyRelevant(title, '', source.category)) continue;
+
+        const desc = pick('description') || pick('summary') || pick('content');
+        // pubDate 兼容 RFC822（"Tue, 06 Oct 2026 08:00:00 GMT"）→ yyyy-MM-dd
+        let pub = pick('pubDate') || pick('published') || pick('updated');
+        if (/^[A-Za-z]{3},/.test(pub) || /\d{4} \d{2}:\d{2}/.test(pub)) {
+          const d = new Date(pub);
+          if (!isNaN(d)) pub = d.toISOString().slice(0, 10);
+        }
+        let changeFlag = 0;
+        const change = R.detectChange(title);
+        if (change) { if (change.risk === 'HIGH') changeFlag = 1; this.stat.changes++; }
+
+        const body = desc.length >= 200 ? desc : '';
+        const rec = {
+          hash, title, url: link,
+          source_name: source.name, source_type: source.type,
+          category: R.classify(title, body) !== '其他' ? R.classify(title, body) : (source.category || '其他'),
+          summary: (desc || '').slice(0, 180) || null,
+          content: body || null,
+          published_at: pub || R.guessPublishedAt(title + ' ' + desc, link),
+          crawled_at: new Date().toISOString(),
+          relevance: R.calcRelevance(title, body, R.matchCourses(title + ' ' + desc), source),
+          matched_courses: R.matchCourses(title + ' ' + desc).join(','),
+          change_flag: changeFlag,
+          change_type: change ? change.type : null,
+          risk_level: change ? change.risk : null,
+          is_read: 0,
+          need_fetch: body ? 0 : 1,
+        };
+        existingHashes.add(hash);
+        toSave.push(rec);
+        added++;
+      }
+      return { found, added };
     }
 
     /** 列表级入库（同步、零额外请求）：正文留空，newsDetail 打开时延迟补抓 */
