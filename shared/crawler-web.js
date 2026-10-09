@@ -27,8 +27,45 @@
   const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
   /** 抓取 HTML（浏览器 fetch 自动解压，无需 zlib） */
+  /**
+   * 抓取 HTML。
+   * APK（Capacitor）：必须走 CapacitorHttp 原生请求——WebView 里 fetch 外部站点
+   *   属于跨域，政府站不返回 CORS 头会被浏览器拦截（v1.0.5 前资讯从未抓到的根因）。
+   *   原生层无 CORS 限制，且自动处理 gzip。
+   * 浏览器（PC/PWA）：走原生 fetch（PC 端抓取在 Node 守护进程，此路径仅兜底）。
+   * 已知限制：CapacitorHttp 按 utf-8 解码，gb2312 站点可能乱码（主流 gov 站已迁移 utf-8）。
+   */
   async function fetchHtml(url, { timeout = 15000, retries = 2 } = {}) {
+    const capHttp = (typeof window !== 'undefined' && window.Capacitor &&
+      window.Capacitor.Plugins && window.Capacitor.Plugins.CapacitorHttp) || null;
     let lastErr;
+
+    if (capHttp) {
+      for (let i = 0; i <= retries; i++) {
+        try {
+          const res = await capHttp.get({
+            url,
+            headers: {
+              'User-Agent': UAS[i % UAS.length],
+              'Accept': 'text/html,application/xhtml+xml,*/*;q=0.8',
+              'Accept-Language': 'zh-CN,zh;q=0.9',
+            },
+            responseType: 'TEXT',
+            connectTimeout: timeout,
+            readTimeout: timeout,
+          });
+          if (res.status >= 400) throw new Error('HTTP ' + res.status);
+          const text = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
+          if (!text || text.length < 100) throw new Error('响应过短(' + (text || '').length + ')');
+          return text;
+        } catch (e) {
+          lastErr = e;
+          if (i < retries) await sleep(1200 * (i + 1));
+        }
+      }
+      throw lastErr;
+    }
+
     for (let i = 0; i <= retries; i++) {
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), timeout);
