@@ -100,11 +100,13 @@
           if (!/[\u4e00-\u9fa5]{6,}/.test(l.title)) return false;
           if (!R.isSelfStudyRelevant(l.title, '', source.category)) return false;
           return true;
-        }).slice(0, 25);
+        }).slice(0, 12);
 
         found = candidates.length;
+        // 列表级入库：不抓详情正文（正文在用户点开详情时延迟抓取），
+        // 单源从「1+25 次请求」降到「1 次请求」，这是启动提速的核心。
         for (const c of candidates) {
-          const r = await this.ingest(c.url, c.title, source, existingHashes, toSave);
+          const r = this.ingest(c.url, c.title, source, existingHashes, toSave);
           if (r.inserted) added++;
         }
         if (toSave.length) await this.store.idbPut(toSave);
@@ -113,35 +115,16 @@
         this.stat.failed++;
         return { ok: false, msg: e.message, name: source.name };
       }
-      await sleep(400 + Math.random() * 600);
+      await sleep(150 + Math.random() * 150);
       return { ok: true, found, added, name: source.name };
     }
 
-    async ingest(url, fallbackTitle, source, existingHashes, toSave) {
+    /** 列表级入库（同步、零额外请求）：正文留空，newsDetail 打开时延迟补抓 */
+    ingest(url, fallbackTitle, source, existingHashes, toSave) {
       const hash = R.simpleHash(url);
       if (existingHashes.has(hash)) return { inserted: false, reason: 'dup' };
 
-      let title = fallbackTitle, body = '';
-      try {
-        const html = await fetchHtml(url, { timeout: 12000, retries: 1 });
-        const tm = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-        if (tm) {
-          const raw = R.stripTags(tm[1]).trim();
-          let cand = raw.split(/\s*[_|\-—]\s*/)[0].trim();
-          if (cand.length >= 8) cand = cand.slice(0, 120);
-          else cand = raw.length > cand.length ? raw : cand;
-          if (cand.length >= 6) title = cand;
-        }
-        const cleaned = html
-          .replace(/<script[\s\S]*?<\/script>/gi, '')
-          .replace(/<style[\s\S]*?<\/style>/gi, '')
-          .replace(/<nav[\s\S]*?<\/nav>/gi, '')
-          .replace(/<header[\s\S]*?<\/header>/gi, '')
-          .replace(/<footer[\s\S]*?<\/footer>/gi, '')
-          .replace(/<aside[\s\S]*?<\/aside>/gi, '');
-        body = R.extractMainText(cleaned);
-      } catch (e) { /* 正文抓不到不影响入库 */ }
-
+      let title = fallbackTitle;
       // 聚合页纠正：详情页 title 若被截断成泛化词，用列表页文字
       if (!/专业信息$|专业目录|专业列表/.test(title) && /专业信息$|专业目录|专业列表/.test(fallbackTitle)) {
         title = fallbackTitle;
@@ -150,16 +133,15 @@
       if (/\/(zkzy|zyjs|zyml|professional)\//i.test(new URL(url).pathname)) {
         return { inserted: false, reason: 'index_page' };
       }
-      // 二次相关性校验
-      if (!R.isSelfStudyRelevant(title, body, source.category) &&
-          !R.isSelfStudyRelevant(fallbackTitle, body, source.category)) {
+      // 相关性校验（标题级：延迟抓取模式下没有正文，标题判定已足够强）
+      if (!R.isSelfStudyRelevant(title, '', source.category) &&
+          !R.isSelfStudyRelevant(fallbackTitle, '', source.category)) {
         return { inserted: false, reason: 'irrelevant' };
       }
 
-      const full = title + ' ' + body;
-      const cat = R.classify(title, body) !== '其他' ? R.classify(title, body) : (source.category || '其他');
-      const matched = R.matchCourses(full);
-      const relevance = R.calcRelevance(title, body, matched, source);
+      const cat = R.classify(title, '') !== '其他' ? R.classify(title, '') : (source.category || '其他');
+      const matched = R.matchCourses(title);
+      const relevance = R.calcRelevance(title, '', matched, source);
 
       // 变动检测：只看标题
       let changeFlag = 0;
@@ -173,22 +155,23 @@
         hash, title, url,
         source_name: source.name, source_type: source.type,
         category: cat,
-        summary: body.slice(0, 180) || null,
-        content: body || null,
-        published_at: R.guessPublishedAt(full, url),
+        summary: null,          // 延迟：点开详情时补
+        content: null,          // 延迟：点开详情时补
+        published_at: R.guessPublishedAt(title, url),
         crawled_at: new Date().toISOString(),
         relevance, matched_courses: matched.join(','),
         change_flag: changeFlag,
         change_type: change ? change.type : null,
         risk_level: change ? change.risk : null,
         is_read: 0,
+        need_fetch: 1,          // 标记正文待抓
       };
       existingHashes.add(hash);
       toSave.push(rec);
       return { inserted: true };
     }
 
-    /** 一轮全量/到期抓取 */
+    /** 一轮到期抓取（force=true 时全量）；源间 3 并发提速 */
     async runOnce(force = false) {
       const S = this.store;
       const all = await S.idbAll();
@@ -202,10 +185,19 @@
       });
       if (!list.length) return { ...this.stat, skipped: true };
 
-      for (const s of list) {
-        const r = await this.crawlOne(s, existingHashes);
-        S.recordSourceCrawl(s.key, r.ok);
+      // 3 路并发：9 个源从串行 ~20s 缩到 ~7s（受网络为主）
+      const CONC = 3;
+      let idx = 0;
+      const self = this;
+      async function worker() {
+        while (idx < list.length) {
+          const s = list[idx++];
+          const r = await self.crawlOne(s, existingHashes);
+          S.recordSourceCrawl(s.key, r.ok);
+        }
       }
+      await Promise.all(Array.from({ length: Math.min(CONC, list.length) }, worker));
+
       S.setSetting('lastCrawlAt', new Date().toISOString());
       return { ...this.stat };
     }

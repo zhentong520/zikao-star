@@ -569,7 +569,26 @@ const ZKLocal = {
   },
   async newsDetail(id){
     const all=await window.ZKStore.idbAll();
-    return all.find(n=>n.hash===id)||null;
+    const rec=all.find(n=>n.hash===id)||null;
+    if(!rec) return null;
+    // 延迟补抓正文：列表级入库的资讯（need_fetch=1）在用户点开时才抓正文
+    if(rec.need_fetch&&window.ZKCrawler&&window.ZKCrawler.fetchHtml){
+      try{
+        const html=await window.ZKCrawler.fetchHtml(rec.url,{timeout:12000,retries:1});
+        const cleaned=html
+          .replace(/<script[\s\S]*?<\/script>/gi,'')
+          .replace(/<style[\s\S]*?<\/style>/gi,'')
+          .replace(/<nav[\s\S]*?<\/nav>/gi,'')
+          .replace(/<header[\s\S]*?<\/header>/gi,'')
+          .replace(/<footer[\s\S]*?<\/footer>/gi,'')
+          .replace(/<aside[\s\S]*?<\/aside>/gi,'');
+        rec.content=window.ZKRules.extractMainText(cleaned);
+        rec.summary=(rec.content||'').slice(0,180)||rec.summary;
+        rec.need_fetch=0;
+        await window.ZKStore.idbPut([rec]);   // 回写，下次秒开
+      }catch(e){ /* 抓不到就用标题，页面有「阅读原文」兜底 */ }
+    }
+    return rec;
   },
   async course(code){
     // 转发 Local.course（科目详情：档案+成绩+状态+资讯TOP3）
@@ -588,10 +607,11 @@ const ZKLocal = {
   async setCourse(code,patch){ window.ZKStore.setCourseStatus(code,patch); return {ok:true}; },
   async saveScore(code,rec){ return window.ZKStore.saveScore(code,rec); },
   async delScore(code,idx){ window.ZKStore.deleteScore(code,idx); return {ok:true}; },
-  async crawl(){
+  async crawl(force){
     if(!window.ZKCrawler) return {error:'爬虫未加载'};
     const c=new window.ZKCrawler.Crawler(window.ZKStore);
-    return c.runOnce(true);
+    // force=true 全量（手动刷新）；默认到期制（打开 App 时按各源自身上次同步时间判断）
+    return c.runOnce(force===true);
   },
   async calendar(){
     const S=window.ZKStore;
@@ -1109,7 +1129,7 @@ async function crawlNow(manual){
   const b=$('#btnCrawl'); if(b){b.textContent='⏳';b.style.opacity='.5'}
   $('#crawlStat').textContent='正在抓取最新资讯，通常 10-30 秒…';
   try{
-    const r=MODE==='pc'?await POST('/api/crawl/run',{}):await ZKLocal.crawl();
+    const r=MODE==='pc'?await POST('/api/crawl/run',{}):await ZKLocal.crawl(true);
     await loadNews(); await refresh();
     const msg=manual?`抓取完成 · 新增 ${r.added} 条 · 变动 ${r.changes} 项`:'同步完成';
     toast(msg+' ✓');
@@ -1419,7 +1439,15 @@ async function refresh(){
       window.ZKStore.idbClear=async()=>false;
     }
     MODE=AUTOTEST?'mobile':await detectMode();
-    if(MODE==='mobile'&&!AUTOTEST){ try{ await ZKLocal.crawl(); }catch(e){ console.warn('首次抓取失败',e); } }
+    // 抓取完全后台化（不再阻塞启动）：默认到期制（非每次全量），
+    // 完成后若有新增资讯则增量刷新界面。启动速度是第一优先级。
+    if(MODE==='mobile'&&!AUTOTEST){
+      ZKLocal.crawl(false).then(r=>{
+        if(r&&r.added>0){ refresh(); toast('已同步 '+r.added+' 条新资讯 🔄'); }
+        const cs=document.getElementById('crawlStat');
+        if(cs&&r) cs.textContent='上次同步：'+new Date().toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+      }).catch(()=>{});
+    }
     await refresh();
     await loadNews();
     renderCal(); renderDegree();
@@ -1432,7 +1460,8 @@ async function refresh(){
     }
     if(AUTOTEST){ runAutotest(); return; }   // 自测模式不隐藏 boot 层
     $('#boots').textContent=`已载入 ${S.courses.length} 门课程 · ${S.boot.stats.newsTotal} 条资讯`;
-    setTimeout(()=>{$('#boot').classList.add('off');setTimeout(()=>$('#boot').remove(),500)},700);
+    // 数据已渲染完成，启动层立即关闭（保留 350ms 过渡动画）
+    $('#boot').classList.add('off');setTimeout(()=>$('#boot').remove(),350);
   }catch(e){
     document.title='BOOTFAIL:'+e.message;
     $('#boots').innerHTML='<span style="color:#C93A50">启动失败：'+esc(e.message)+'</span><br><br>请确认本地服务已启动';

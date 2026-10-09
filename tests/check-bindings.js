@@ -127,7 +127,7 @@ console.log('🧪 前端绑定自检\n');
 /* ---- 启动链路关键点 ---- */
 {
   ok('detectMode 存在', /async function detectMode/.test(html));
-  ok('mobile 分支触发首次抓取', /ZKLocal\.crawl\(\)/.test(html));
+  ok('mobile 分支后台触发抓取（到期制，不阻塞启动）', /ZKLocal\.crawl\(false\)\.then/.test(html) && !/await ZKLocal\.crawl\(\)/.test(html));
   ok('loadNews 移动分支走 ZKLocal.news', /ZKLocal\.news\(\{/.test(html));
   ok('移动端 newsDetail 有定义且被调用', defsHave(html, 'ZKLocal', 'newsDetail') && /ZKLocal\.newsDetail\(/.test(html));
 }
