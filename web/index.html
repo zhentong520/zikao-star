@@ -1528,6 +1528,13 @@ async function runAutotest(){
     T('论文收藏切换：收藏生效',after1===true&&window.ZKStore.getFavDirections().includes(favTitle));
     const after2=window.ZKStore.toggleFavDirection(favTitle);
     T('论文收藏切换：取消生效',after2===false&&!window.ZKStore.getFavDirections().includes(favTitle));
+    // 9. 真实网络抓取（仅 APK 内验证——桌面浏览器 CORS 会失败属预期）
+    if(IS_Capacitor&&window.ZKCrawler){
+      try{
+        const html=await window.ZKCrawler.fetchHtml('https://eea.gd.gov.cn/',{timeout:15000,retries:1});
+        T('CapacitorHttp 真实抓取（广东省教育考试院）',typeof html==='string'&&html.length>1000,'长度='+(html||'').length);
+      }catch(e){ T('CapacitorHttp 真实抓取（广东省教育考试院）',false,e.message); }
+    }
     // 清理测试痕迹
     await ZKLocal.setCourse('02324',{status:'未开始',planned_exam_date:null,note:''});
   }catch(e){ R.push({n:'异常中断：'+e.message,ok:false}); }
