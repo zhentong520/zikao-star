@@ -147,11 +147,28 @@
         }).slice(0, 12);
 
         found = candidates.length;
-        // 列表级入库：不抓详情正文（正文在用户点开详情时延迟抓取），
-        // 单源从「1+25 次请求」降到「1 次请求」，这是启动提速的核心。
+        // 列表级入库：单源 1 次请求，启动提速核心
         for (const c of candidates) {
           const r = this.ingest(c.url, c.title, source, existingHashes, toSave);
           if (r.inserted) added++;
+        }
+        // 正文预取：本轮新入库条目补抓前 8 条全文（用户点开即有正文，
+        // 超出的仍保留「点开时延迟抓取」路径，兼顾速度与完整性）
+        let prefetched = 0;
+        for (const r of toSave) {
+          if (prefetched >= 8) break;
+          if (!r.need_fetch) continue;    // RSS 源通常自带正文，无需补
+          try {
+            const html = await fetchHtml(r.url, { timeout: 12000, retries: 1 });
+            const body = R.extractMainText(html);
+            if (body && body.length > 100) {
+              r.content = body;
+              r.summary = r.summary || body.slice(0, 180);
+              r.need_fetch = 0;
+            }
+          } catch (e) { /* 抓不到则保持延迟补抓 */ }
+          prefetched++;
+          await sleep(150);               // 礼貌限速
         }
         if (toSave.length) await this.store.idbPut(toSave);
         this.stat.ok++; this.stat.found += found; this.stat.added += added;
@@ -300,6 +317,8 @@
       }
       await Promise.all(Array.from({ length: Math.min(CONC, list.length) }, worker));
 
+      // 留存上限：每人本地只保留最新 100 条资讯（含正文）
+      await S.pruneNews(100);
       S.setSetting('lastCrawlAt', new Date().toISOString());
       return { ...this.stat };
     }

@@ -234,6 +234,24 @@ async function idbClear() {
   } catch (e) { return false; }
 }
 
+/**
+ * 资讯本地留存上限：只保留最新 max 条（默认 100），防止 IndexedDB 无限膨胀。
+ * 排序依据 crawled_at（抓取时间，必填）优先、published_at 兜底。
+ * 无 IndexedDB（autotest/老内核）时优雅返回 false。
+ */
+async function pruneNews(max = 100) {
+  try {
+    const all = await idbAll();
+    if (!all.length || all.length <= max) return false;
+    const sorted = [...all].sort((a, b) =>
+      String(b.crawled_at || '').localeCompare(String(a.crawled_at || '')) ||
+      String(b.published_at || '').localeCompare(String(a.published_at || '')));
+    await idbClear();
+    await idbPut(sorted.slice(0, max));
+    return all.length - max;
+  } catch (e) { return false; }
+}
+
 /* ============ 业务查询 ============ */
 function getProfile() { return loadState().profile; }
 function getGroup() {
@@ -457,7 +475,7 @@ window.ZKStore = {
   getExamCourses, getCreditsCourses,
   computeProgress, computeDegree,
   setCourseStatus, saveScore, deleteScore,
-  idbAll, idbPut, idbClear, recordSourceCrawl, toggleFavDirection, getFavDirections,
+  idbAll, idbPut, idbClear, pruneNews, recordSourceCrawl, toggleFavDirection, getFavDirections,
   getPractice, recordPractice, resetPractice, practiceStats, wrongQuestions,
   exportAll, importData, resetAll,
 };

@@ -312,6 +312,9 @@ class Crawler {
     if (!list.length) return { ...this.stat, skipped: true, message: '暂无到期的数据源' };
     for (const s of list) await this.crawlOne(s);
     this.db.prepare("INSERT OR REPLACE INTO setting (key,value) VALUES ('last_crawl_at',datetime('now','localtime'))").run();
+    // 留存上限：与手机端对齐，只保留最新 100 条资讯
+    this.db.prepare(`DELETE FROM news WHERE id NOT IN
+      (SELECT id FROM news ORDER BY COALESCE(published_at, crawled_at) DESC, id DESC LIMIT 100)`).run();
     return { ...this.stat };
   }
 }

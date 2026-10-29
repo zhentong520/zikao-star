@@ -627,7 +627,7 @@ function renderHome(){
 
   h+=`<div class="st">📰 本专业资讯</div>`;
   S.news.slice(0,3).forEach((n,i)=>{
-    h+=`<div class="news bd" onclick="openArticle(${n.id})">
+    h+=`<div class="news bd" onclick="openArticle('${MODE==='pc'?n.id:n.hash}')">
       <div class="news-rk">${i+1}</div>
       <div class="news-t">${esc(n.title)}</div>
       <div class="news-m"><span class="${catColor(n.category)}">${n.category}</span>
@@ -771,7 +771,7 @@ function detailHTML(d){
   h+=`<div class="st">📰 本科目资讯 TOP3</div>`;
   if(!d.news||!d.news.length) h+=`<div class="empty"><div class="e">📭</div>暂无相关资讯</div>`;
   (d.news||[]).forEach((n,i)=>{
-    h+=`<div class="news bd" onclick="openArticle(${n.id})">
+    h+=`<div class="news bd" onclick="openArticle('${MODE==='pc'?n.id:n.hash}')">
       <div class="news-rk">${i+1}</div>
       <div class="news-t">${esc(n.title)}</div>
       <div class="news-m"><span class="${catColor(n.category)}">${n.category}</span>
@@ -1011,7 +1011,7 @@ function renderNews(){
   let h='';
   if(!S.news.length) h=`<div class="empty"><div class="e">📭</div>还没有资讯<br><br><button class="btn btn-p" onclick="crawlNow(true)">立即抓取</button></div>`;
   S.news.forEach(n=>{
-    h+=`<div class="news" onclick="openArticle(${n.id})">
+    h+=`<div class="news" onclick="openArticle('${MODE==='pc'?n.id:n.hash}')">
       ${n.change_flag?'<div class="news-rk">!</div>':''}
       <div class="news-t" ${n.change_flag?'style="padding-left:22px"':''}>${esc(n.title)}</div>
       <div class="news-m"><span class="${catColor(n.category)}">${n.category}</span>
