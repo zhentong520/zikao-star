@@ -317,6 +317,48 @@ body{font-family:"PingFang SC","HarmonyOS Sans","Microsoft YaHei",-apple-system,
 .art-src{margin-top:16px;padding:12px;background:var(--primary-xl);border-radius:12px;font-size:11.5px;color:#8B5A4C);
   word-break:break-all;line-height:1.7}
 
+/* 刷题 */
+.qstem{font-size:15px;font-weight:700;line-height:1.65;margin-bottom:12px;letter-spacing:-.2px}
+.qgroup{font-size:10.5px;color:var(--t3);margin-bottom:7px}
+.qopt{display:flex;gap:9px;align-items:flex-start;padding:11px 13px;border-radius:14px;background:var(--surface);
+  border:1.6px solid var(--line);font-size:13.5px;line-height:1.55;margin-bottom:8px;cursor:pointer;transition:.15s}
+.qopt:active{transform:scale(.99)}
+.qopt .k{flex:0 0 21px;height:21px;border-radius:7px;background:var(--bg);display:flex;align-items:center;
+  justify-content:center;font-size:11px;font-weight:700;color:var(--t2);margin-top:1px}
+.qopt.on{border-color:var(--primary);background:var(--primary-xl)}
+.qopt.on .k{background:var(--grad);color:#fff}
+.qopt.ok{border-color:#8FC9A9;background:#EAF6EF}
+.qopt.ok .k{background:#8FC9A9;color:#fff}
+.qopt.no{border-color:var(--danger);background:#FFEFF1}
+.qopt.no .k{background:var(--danger);color:#fff}
+.qopt.dim{opacity:.5}
+.qans{background:var(--primary-xl);border-left:3px solid var(--primary);border-radius:0 12px 12px 0;
+  padding:10px 12px;font-size:12.5px;color:#8B5A4C;line-height:1.75;margin-top:10px}
+.qans.ok{background:#EAF6EF;border-left-color:#8FC9A9;color:#3F8B66}
+.qans b{font-weight:800}
+.qans .shortans{font-size:12.5px;line-height:1.8;margin-top:5px}
+.qans .shortans ol,.qans .shortans ul{padding-left:17px;margin:3px 0}
+.qans .shortans li{margin:2px 0}
+.qhead{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.qhead .back{width:32px;height:32px;border-radius:11px;background:var(--surface);box-shadow:var(--sh);
+  display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;border:none;color:var(--t1)}
+.qhead .qt{font-size:12.5px;font-weight:700;line-height:1.3;flex:1;min-width:0;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.qhead .qn{font-size:10.5px;color:var(--t3);font-weight:600;flex:0 0 auto}
+.qfoot{position:sticky;bottom:-20px;background:linear-gradient(180deg,rgba(255,249,245,0) 0%,var(--bg) 32%);
+  padding:14px 0 16px;display:flex;gap:8px;margin-top:6px}
+.qfoot .btn{flex:1}
+.qcard{background:var(--surface);border-radius:20px;padding:15px;box-shadow:var(--sh);margin-bottom:11px}
+.qstat{display:flex;gap:7px;margin-bottom:11px}
+.qstat .c{flex:1;background:var(--surface);border-radius:14px;padding:9px 4px;text-align:center;box-shadow:var(--sh)}
+.qstat .c b{display:block;font-size:17px;font-weight:800;letter-spacing:-.5px}
+.qstat .c span{font-size:9.5px;color:var(--t3)}
+.qstat .c.hl b{color:var(--primary)}
+.wrow{display:flex;gap:8px;padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.wrow:last-child{border-bottom:none}
+.wrow .g{font-size:9.5px;color:var(--t3);margin-bottom:2px}
+.wrow .s{font-size:12.5px;line-height:1.5}
+
 /* Toast */
 #tg{position:fixed;left:50%;top:calc(var(--safe-t) + 16px);transform:translateX(-50%);
   background:rgba(74,63,60,.94);color:#fff;padding:10px 18px;border-radius:999px;font-size:12.5px;font-weight:600;
@@ -412,9 +454,26 @@ body{font-family:"PingFang SC","HarmonyOS Sans","Microsoft YaHei",-apple-system,
     <div class="scroll" id="degScroll"></div>
   </div>
 
+  <!-- ===== 刷题（题库列表） ===== -->
+  <div class="screen" id="s-quiz">
+    <div class="scroll">
+      <div class="appbar">
+        <div><h1>刷题</h1><div class="sub" id="quizSub">—</div></div>
+        <div class="ib" onclick="quizHelp()">?</div>
+      </div>
+      <div id="quizBody"></div>
+    </div>
+  </div>
+
+  <!-- ===== 答题 ===== -->
+  <div class="screen" id="s-run">
+    <div class="scroll" id="runScroll"></div>
+  </div>
+
   <div class="tabbar">
     <div class="tab on" data-s="home"><span class="ic">🏠</span>首页</div>
     <div class="tab" data-s="courses"><span class="ic">📚</span>科目</div>
+    <div class="tab" data-s="quiz"><span class="ic">📝</span>刷题</div>
     <div class="tab" data-s="cal"><span class="ic">🗓</span>日历</div>
     <div class="tab" data-s="news"><span class="ic">📰</span>资讯</div>
     <div class="tab" data-s="degree"><span class="ic">🎓</span>学位</div>
@@ -465,8 +524,302 @@ function go(s){
   $$('.tab').forEach(t=>t.classList.toggle('on',t.dataset.s===s));
   $('#'+s+'-scroll')?.scrollTo?.(0,0);
   if(s==='degree')renderDegree();
+  if(s==='quiz')renderQuiz();
+  if(s==='run')renderRun();
 }
 $$('.tab').forEach(t=>t.onclick=()=>go(t.dataset.s));
+
+/* ============ 刷题模块 ============
+ * 数据：shared/banks/*.json（由 scripts/build-quiz-banks.py 从冲刺资料生成）
+ * 记录：ZKStore.practice（localStorage，随导出/导入走）
+ * 题型：single 单选 / multi 多选 / fill 填空 / short 简答（自评）
+ */
+const QB = { banks:null, cache:{}, list:[], bank:null, bid:'', idx:0, sel:new Set(), mode:'all', revealed:false };
+// esc() 复用文件后面的通用转义函数（本模块函数均在运行时调用，安全）
+
+async function loadBankIndex(){
+  if(QB.banks) return QB.banks;
+  try {
+    const idx = await API('shared/banks/index.json');
+    QB.banks = idx.banks || [];
+  } catch(e){ QB.banks = []; }
+  return QB.banks;
+}
+async function loadBankFile(file){
+  if(QB.cache[file]) return QB.cache[file];
+  const b = await API('shared/banks/'+file);
+  QB.cache[file] = b;
+  return b;
+}
+function flattenBank(bank){
+  const out=[];
+  (bank.groups||[]).forEach(g=>(g.questions||[]).forEach(q=>out.push(Object.assign({},q,{g:g.title}))));
+  return out;
+}
+
+// ---------- 题库列表 ----------
+async function renderQuiz(){
+  const body=$('#quizBody');
+  if(!body) return;
+  body.innerHTML='<div class="empty"><div class="e">📝</div>正在读取题库…</div>';
+  const banks = await loadBankIndex();
+  if(!banks.length){
+    body.innerHTML='<div class="empty"><div class="e">📭</div>题库未安装<br><span style="font-size:11.5px">运行 python scripts/build-quiz-banks.py 生成，再 node scripts/sync-shared.js 同步</span></div>';
+    $('#quizSub').textContent='—';
+    return;
+  }
+  let totalAll=0, doneAll=0, rightAll=0, cards='';
+  for(const m of banks){
+    let bank; try{ bank = await loadBankFile(m.file); }catch(e){ continue; }
+    const qs = flattenBank(bank);
+    const st = ZKStore.practiceStats(m.id, qs);
+    totalAll+=st.total; doneAll+=st.done; rightAll+=st.right;
+    const pg = st.total? Math.round(st.done/st.total*100) : 0;
+    const finished = st.total>0 && st.done===st.total;
+    cards += `<div class="qcard">
+      <div class="card-t"><span>${esc(m.title)}</span>
+        <span class="chip ${finished?'c-done':(st.done?'c-ing':'c-wait')}">${st.done?(finished?'已完成 '+st.rate+'%':'正确率 '+st.rate+'%'):'未开始'}</span></div>
+      <div style="font-size:11px;color:var(--t3);margin-bottom:2px">${esc(m.subtitle||'')}</div>
+      <div class="bar"><i style="width:${pg}%"></i></div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
+        <span style="font-size:10.5px;color:var(--t3)">已做 ${st.done}/${st.total}${st.wrong?' · 错 '+st.wrong:''}</span>
+        <div style="margin-left:auto;display:flex;gap:6px">
+          ${st.wrong?`<button class="btn btn-f" onclick="openWrongBook('${m.id}','${m.file}')">错题 ${st.wrong}</button>`:''}
+          <button class="btn btn-p" onclick="startBank('${m.id}','${m.file}')">${st.done?'继续':'开始'}</button>
+        </div>
+      </div>
+    </div>`;
+  }
+  const rate = doneAll? Math.round(rightAll/doneAll*100):0;
+  $('#quizSub').textContent = `共 ${totalAll} 题 · 已练 ${doneAll} 题`;
+  body.innerHTML = `
+    <div class="qstat">
+      <div class="c hl"><b class="num">${doneAll}</b><span>已练题数</span></div>
+      <div class="c"><b class="num">${totalAll-doneAll}</b><span>待练</span></div>
+      <div class="c"><b class="num">${rate}%</b><span>正确率</span></div>
+    </div>
+    ${cards}
+    <div style="font-size:10.5px;color:var(--t3);line-height:1.7;padding:6px 4px">
+      题库来自冲刺阶段自编预测题，非当次考试真题，仅用于考点覆盖练习。答错的题会自动进错题本，考前只刷错题性价比最高。
+    </div>`;
+}
+
+function quizHelp(){
+  openSheet('怎么刷最有效', `
+    <div style="font-size:13px;line-height:1.9;color:var(--t2)">
+      <p><b style="color:var(--t1)">① 单选/多选</b>：点选项即判对错，答完立刻看考点，错当场记。</p>
+      <p><b style="color:var(--t1)">② 填空/简答</b>：先在纸上写，再点「看答案」自评，别偷懒直接看。</p>
+      <p><b style="color:var(--t1)">③ 错题本</b>：考前 3 天只刷错题，性价比最高；错题刷对后会从错题本消失。</p>
+      <p><b style="color:var(--t1)">④ 进度</b>：记录存在本机，导出数据时会一起带走。</p>
+    </div>`);
+}
+
+// ---------- 开始答题 ----------
+async function startBank(id, file, mode){
+  mode = mode || 'all';
+  const bank = await loadBankFile(file);
+  let qs = flattenBank(bank);
+  if(mode==='wrong'){
+    qs = ZKStore.wrongQuestions(id, qs);
+    if(!qs.length){ toast('这个题库暂时没有错题 🎉'); return; }
+  }
+  QB.bank=bank; QB.bid=id; QB.list=qs; QB.mode=mode; QB.sel=new Set(); QB.revealed=false;
+  const rec = ZKStore.getPractice(id);
+  if(mode==='wrong'){ QB.idx=0; }
+  else {
+    // 继续：优先从上次位置；若该位置已答完则找第一道未答
+    let i = Math.min(rec.last||0, qs.length-1);
+    if(rec.rec[qs[i]?.id]) {
+      const next = qs.findIndex(q=>!rec.rec[q.id]);
+      i = next>=0 ? next : i;
+    }
+    QB.idx = i;
+  }
+  go('run');
+}
+
+// ---------- 答题界面 ----------
+function renderRun(){
+  const box=$('#runScroll');
+  const q=QB.list[QB.idx];
+  if(!q){ go('quiz'); return; }
+  const rec = ZKStore.getPractice(QB.bid).rec[q.id] || null;
+  const ansSet = new Set((q.answer||'').split('').filter(Boolean));
+  const answered = !!rec;
+  const isMulti = q.type==='multi';
+  const title = QB.bank ? QB.bank.title : '刷题';
+
+  let opts='';
+  if(q.options && q.options.length){
+    opts = q.options.map(o=>{
+      const k=o[0], text=o.replace(/^[A-E]\.\s*/,'');
+      let cls='qopt';
+      if(answered){
+        if(ansSet.has(k)) cls+=' ok';
+        else if(rec.c && rec.c.includes(k)) cls+=' no';
+        else cls+=' dim';
+      } else if(QB.sel.has(k)) cls='qopt on';
+      return `<div class="${cls}" onclick="pickOpt('${k}')"><span class="k">${k}</span><span>${esc(text)}</span></div>`;
+    }).join('');
+  }
+
+  let feedback='';
+  if(answered){
+    const head = q.answer
+      ? `正确答案 ${q.answer} · ${rec.ok?'答对了 ✓':'答错了 ✗'}`
+      : (rec.ok?'已掌握 ✓':'待巩固');
+    feedback = `<div class="qans ${rec.ok?'ok':''}">
+      <div><b>${esc(head)}</b></div>
+      ${q.kp?`<div style="margin-top:4px">考点：${esc(q.kp)}</div>`:''}
+      ${q.type==='fill'?`<div style="margin-top:4px">参考答案：<b>${esc(q.answerText||'')}</b></div>`:''}
+      ${q.type==='short'?`<div class="shortans">${q.answerHtml||''}</div>`:''}
+    </div>`;
+  } else if(q.type==='fill' || q.type==='short'){
+    feedback = QB.revealed
+      ? `<div class="qans">
+           <div style="margin-bottom:4px"><b>${q.type==='fill'?'参考答案':'答案要点'}</b></div>
+           ${q.type==='fill'?`<div>${esc(q.answerText||'')}</div>`:`<div class="shortans">${q.answerHtml||''}</div>`}
+         </div>
+         <div style="display:flex;gap:8px;margin-top:10px">
+           <button class="btn btn-f" style="flex:1" onclick="judgeSelf(false)">没答对</button>
+           <button class="btn btn-p" style="flex:1" onclick="judgeSelf(true)">答对了</button>
+         </div>`
+      : `<button class="btn btn-g btn-full" onclick="revealAns()">先自己写，再看${q.type==='fill'?'答案':'要点'}</button>`;
+  }
+
+  const isLast = QB.idx===QB.list.length-1;
+  const multiConfirm = (isMulti && !answered)
+    ? `<button class="btn btn-p" onclick="confirmMulti()" ${QB.sel.size?'':'disabled style="opacity:.45"'}>确认选择${QB.sel.size?`（${QB.sel.size}）`:''}</button>`
+    : '';
+  const nextBtn = isLast
+    ? `<button class="btn btn-p" onclick="finishRun()">完成练习</button>`
+    : `<button class="btn btn-p" onclick="stepQ(1)">下一题</button>`;
+
+  box.innerHTML = `
+    <div class="qhead">
+      <button class="back" onclick="quitRun()">←</button>
+      <div class="qt">${esc(title)}${QB.mode==='wrong'?' · 错题重刷':''}</div>
+      <div class="qn num">${QB.idx+1}/${QB.list.length}</div>
+    </div>
+    <div class="bar" style="margin-bottom:14px"><i style="width:${Math.round((QB.idx+1)/QB.list.length*100)}%"></i></div>
+    <div class="qcard">
+      <div class="qgroup">${esc(q.g||'')}${q.stars?` · ${'★'.repeat(q.stars)}`:''}</div>
+      <div class="qstem">${esc(q.stem)}</div>
+      ${opts}
+      ${feedback}
+    </div>
+    <div class="qfoot">
+      ${QB.idx>0?'<button class="btn btn-f" onclick="stepQ(-1)">上一题</button>':''}
+      ${multiConfirm}
+      ${!answered && !isMulti && q.options && q.options.length ? '' : (answered || q.type==='fill' || q.type==='short' ? nextBtn : '')}
+    </div>`;
+  $('#runScroll').scrollTo?.(0,0);
+}
+
+function pickOpt(k){
+  const q=QB.list[QB.idx];
+  if(!q || !q.options) return;
+  const rec = ZKStore.getPractice(QB.bid).rec[q.id];
+  if(rec) return;                       // 已答过，不允许再点
+  if(q.type==='multi'){
+    QB.sel.has(k)? QB.sel.delete(k) : QB.sel.add(k);
+    renderRun();
+    return;
+  }
+  const ok = (q.answer||'')===k;
+  ZKStore.recordPractice(QB.bid, q.id, k, ok, QB.idx);
+  renderRun();
+  if(!ok) toast('答错了，看下考点');
+}
+
+function confirmMulti(){
+  const q=QB.list[QB.idx];
+  if(!q || !QB.sel.size) return;
+  const chosen=[...QB.sel].sort().join('');
+  const ok = chosen === (q.answer||'').split('').sort().join('');
+  ZKStore.recordPractice(QB.bid, q.id, chosen, ok, QB.idx);
+  QB.sel=new Set();
+  renderRun();
+  if(!ok) toast('答错了，看下考点');
+}
+
+function revealAns(){ QB.revealed=true; renderRun(); }
+
+function judgeSelf(ok){
+  const q=QB.list[QB.idx];
+  if(!q) return;
+  ZKStore.recordPractice(QB.bid, q.id, 'self', ok, QB.idx);
+  QB.revealed=false;
+  renderRun();
+}
+
+function stepQ(d){
+  const i = QB.idx + d;
+  if(i<0 || i>=QB.list.length) return;
+  QB.idx=i; QB.sel=new Set(); QB.revealed=false;
+  renderRun();
+}
+
+function quitRun(){
+  if(QB.mode==='wrong' && QB.idx>0) { /* 保持记录 */ }
+  go('quiz');
+}
+
+function finishRun(){
+  const qs = QB.list;
+  const rec = ZKStore.getPractice(QB.bid).rec;
+  const done = qs.filter(q=>rec[q.id]).length;
+  const right = qs.filter(q=>rec[q.id] && rec[q.id].ok).length;
+  const wrong = done-right;
+  const rate = done? Math.round(right/done*100):0;
+  openSheet('练习完成', `
+    <div class="qstat" style="margin-bottom:14px">
+      <div class="c hl"><b class="num">${rate}%</b><span>正确率</span></div>
+      <div class="c"><b class="num">${done}/${qs.length}</b><span>已答</span></div>
+      <div class="c"><b class="num">${wrong}</b><span>错题</span></div>
+    </div>
+    <p style="font-size:12.5px;color:var(--t2);line-height:1.8;margin-bottom:14px">
+      ${wrong? '错题已进错题本，明天再刷一遍最有效——同一道题错两次，说明这个考点是真不会。' : '全对，这一组可以放下了，去刷下一组。'}
+    </p>
+    <div style="display:flex;gap:8px">
+      ${wrong?`<button class="btn btn-f" style="flex:1" onclick="closeSheet();startBank('${QB.bid}','${curBankFile()}','wrong')">刷错题 ${wrong}</button>`:''}
+      <button class="btn btn-p" style="flex:1" onclick="closeSheet();go('quiz')">回题库</button>
+    </div>`);
+}
+
+function curBankFile(){
+  const m=(QB.banks||[]).find(x=>x.id===QB.bid);
+  return m? m.file : QB.bid+'.json';
+}
+
+// ---------- 错题本 ----------
+async function openWrongBook(id, file){
+  const bank = await loadBankFile(file);
+  const all = flattenBank(bank);
+  const wrong = ZKStore.wrongQuestions(id, all);
+  if(!wrong.length){ toast('这个题库暂时没有错题 🎉'); return; }
+  const rows = wrong.map(q=>`
+    <div class="wrow" onclick="closeSheet();jumpTo('${id}','${file}','${q.id}')">
+      <div style="flex:1;min-width:0">
+        <div class="g">${esc(q.g||'')}</div>
+        <div class="s">${esc(q.stem).slice(0,70)}${q.stem.length>70?'…':''}</div>
+      </div>
+      <div style="flex:0 0 auto;font-size:11px;color:var(--danger);font-weight:700;align-self:center">${esc(q.answer||'')}</div>
+    </div>`).join('');
+  openSheet(`错题本 · ${wrong.length} 题`, `
+    <div style="max-height:56vh;overflow-y:auto">${rows}</div>
+    <button class="btn btn-p btn-full" style="margin-top:14px" onclick="closeSheet();startBank('${id}','${file}','wrong')">开始刷错题（${wrong.length}）</button>`);
+}
+
+async function jumpTo(id, file, qid){
+  const bank = await loadBankFile(file);
+  const qs = flattenBank(bank);
+  const i = qs.findIndex(q=>q.id===qid);
+  if(i<0) return;
+  QB.bank=bank; QB.bid=id; QB.list=qs; QB.mode='all'; QB.sel=new Set(); QB.revealed=false; QB.idx=i;
+  go('run');
+}
+
 
 // ---------- 格式化 ----------
 const pad=n=>String(n).padStart(2,'0');
