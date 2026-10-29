@@ -1,5 +1,5 @@
 /* 自考星 Service Worker —— 离线可用 + 缓存加速 */
-const VERSION = 'zikao-v2';   // v2：新增刷题模块，旧缓存需失效
+const VERSION = 'zikao-v3';   // v3：刷题考纲过滤 + 考点预测，旧缓存需失效
 const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icon.svg', '/icon-192.png', '/icon-180.png'];
 
 self.addEventListener('install', (e) => {

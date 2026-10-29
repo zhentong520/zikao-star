@@ -59,9 +59,27 @@ const ok = (cond, msg) => { cond ? (pass++, console.log('  ✓', msg)) : (fail++
   // --- 题库列表 ---
   window.go('quiz');
   await wait(900);
-  const cards = window.document.querySelectorAll('#quizBody .qcard');
+  const cards = window.document.querySelectorAll('#quizBody .qbank');
+  const predCards = window.document.querySelectorAll('#quizBody .qpred');
   ok(cards.length === 3, `题库卡片渲染 3 个（实际 ${cards.length}）`);
   ok(/共 154 题/.test(text('#quizSub')), `顶部统计显示总题量：「${text('#quizSub')}」`);
+
+  // --- 考点预测卡（历代真题频次） ---
+  ok(predCards.length === 2, `考点预测卡渲染 2 个课程（实际 ${predCards.length}）`);
+  ok(/×4 场/.test(text('#quizBody')), '预测卡显示考点频次（×N 场）');
+  ok(/命题规律/.test(text('#quizBody')), '预测卡含命题规律折叠区');
+  ok(/练 \d+ 题/.test(text('#quizBody')), '预测卡热点带「练 N 题」入口');
+  ok(/考纲/.test(text('#quizSub')) || /考纲/.test(text('#quizBody')), '页面说明考纲匹配（只显示能刷的题）');
+
+  // --- 考点聚焦练习：从预测卡入口进入，只练命中题 ---
+  window.startBank('13005-sprint', '13005-sprint.json', 'all', 'DFD|数据流图', '考点：DFD 数据流图');
+  await wait(400);
+  ok($('#s-run')?.classList.contains('on'), '考点聚焦进入答题页');
+  ok(QB().list.length > 0 && QB().list.length < 50, `聚焦列表是子集（${QB().list.length} 题 < 50）`);
+  ok(QB().list.every(q => /DFD|数据流图/.test((q.kp || '') + (q.stem || ''))), '聚焦列表每题都命中该考点');
+  ok(/考点：DFD/.test(text('#runScroll .qt')), '答题页标题显示聚焦考点');
+  window.go('quiz');
+  await wait(600);
 
   // --- 进入第一个题库答题 ---
   window.startBank('15040-sprint', '15040-sprint.json');
