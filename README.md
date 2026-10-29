@@ -160,8 +160,12 @@ git clone https://github.com/zhentong520/zikao-star.git
 cd zikao-star
 npm run seed          # 生成含考纲的数据库
 
-# 3. 启动
+# 3. 启动（默认仅本机访问，保护你的成绩/笔记数据）
 npm start             # 或 Windows 下双击 启动.bat
+
+# 让手机在同一 WiFi 访问（服务无鉴权，请只在可信网络开启）：
+#   macOS/Linux:  ZK_HOST=0.0.0.0 npm start
+#   Windows PowerShell:  $env:ZK_HOST='0.0.0.0'; npm start
 ```
 
 打开 `http://localhost:5173` 即可使用。
@@ -284,6 +288,8 @@ npm run daemon         # 守护进程（自适应提频抓取）
 npm run icons          # 重新生成图标
 npm run banks          # 题源 HTML → 题库 JSON（改题库用）
 npm run test:quiz      # 刷题功能冒烟测试（需先 npm start）
+npm run test:degree    # 学位算法单测（补考/免考/取最高等口径，15 用例）
+npm run test:mobile    # 移动端逻辑测试（模拟 WebView 环境，49 项）
 npm run cap:sync       # 同步资源到 Android 工程
 npm run cap:android    # 用 Android Studio 打开
 

@@ -11,6 +11,11 @@ const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
 const html = fs.readFileSync(path.join(ROOT, 'web', 'index.html'), 'utf8');
+// 主逻辑已拆分到 web/app.js —— 与 index.html 合并为一个扫描源，
+// 使 ZKLocal/Local/onclick 等静态审计覆盖完整代码
+const appJsPath = path.join(ROOT, 'web', 'app.js');
+const appJs = fs.existsSync(appJsPath) ? fs.readFileSync(appJsPath, 'utf8') : '';
+const src = html + '\n' + appJs;
 const storeJs = fs.readFileSync(path.join(ROOT, 'shared', 'store.js'), 'utf8');
 const rulesJs = fs.readFileSync(path.join(ROOT, 'shared', 'rules.js'), 'utf8');
 const mobileJs = fs.readFileSync(path.join(ROOT, 'tests', 'mobile.js'), 'utf8');
@@ -48,8 +53,8 @@ console.log('🧪 前端绑定自检\n');
 
 /* ---- ZKLocal ---- */
 {
-  const defs = definedMethods(html, 'const ZKLocal = {');
-  const calls = calledMethods(html, 'ZKLocal');
+  const defs = definedMethods(src, 'const ZKLocal = {');
+  const calls = calledMethods(src, 'ZKLocal');
   console.log(`ZKLocal：定义 ${defs.length} 个，调用 ${calls.length} 种`);
   const missing = calls.filter(c => !defs.includes(c));
   ok('ZKLocal 所有调用均有定义', missing.length === 0, '缺失: ' + missing.join(', '));
@@ -59,8 +64,8 @@ console.log('🧪 前端绑定自检\n');
 
 /* ---- Local ---- */
 {
-  const defs = definedMethods(html, 'const Local = {');
-  const calls = calledMethods(html, 'Local').filter(c => c !== 'Storage');
+  const defs = definedMethods(src, 'const Local = {');
+  const calls = calledMethods(src, 'Local').filter(c => c !== 'Storage');
   console.log(`Local：定义 ${defs.length} 个，调用 ${calls.length} 种`);
   const missing = calls.filter(c => !defs.includes(c));
   ok('Local 所有调用均有定义', missing.length === 0, '缺失: ' + missing.join(', '));
@@ -79,7 +84,7 @@ console.log('🧪 前端绑定自检\n');
   ok(`ZKStore 导出项均有实体声明（${exported.size} 项）`, missingDecl.length === 0, missingDecl.join(', '));
 
   // 调用一致性：index.html 与 mobile.js
-  const callsHtml = calledMethods(html, 'window.ZKStore');
+  const callsHtml = calledMethods(src, 'window.ZKStore');
   const missingHtml = callsHtml.filter(c => !exported.has(c));
   console.log(`ZKStore：导出 ${exported.size} 个，index.html 调用 ${callsHtml.length} 种，mobile.js 调用 ${calledMethods(mobileJs, 'S').length} 种`);
   ok('index.html 对 ZKStore 的调用均有定义', missingHtml.length === 0, '缺失: ' + missingHtml.join(', '));
@@ -112,24 +117,24 @@ console.log('🧪 前端绑定自检\n');
 {
   const KEYWORDS = new Set(['if', 'for', 'while', 'return', 'confirm']);
   const fns = new Set();
-  for (const m of html.matchAll(/onclick="([A-Za-z_$][\w$]*)\s*\(/g)) fns.add(m[1]);
-  const missing = [...fns].filter(fn => !KEYWORDS.has(fn) && !new RegExp('function\\s+' + fn + '\\b').test(html));
+  for (const m of src.matchAll(/onclick="([A-Za-z_$][\w$]*)\s*\(/g)) fns.add(m[1]);
+  const missing = [...fns].filter(fn => !KEYWORDS.has(fn) && !new RegExp('function\\s+' + fn + '\\b').test(src));
   console.log(`onclick 审计：${fns.size} 个按钮处理函数，缺失 ${missing.length} 个`);
   ok('所有 onclick 处理函数均已定义', missing.length === 0, '缺失: ' + missing.join(', '));
 
   // 假动作审计：toast 文案用完成时态（"已xx"）= 欺骗性按钮，禁止。
   // 提示类文案（如"可截图保存"）允许。
-  const fake = [...html.matchAll(/onclick="toast\('([^']+)'\)"/g)]
+  const fake = [...src.matchAll(/onclick="toast\('([^']+)'\)"/g)]
     .map(m => m[1]).filter(t => /^已|^完成|成功$/.test(t));
   ok('无「完成时态」的假按钮（只弹提示却声称已操作）', fake.length === 0, fake.join(' | '));
 }
 
 /* ---- 启动链路关键点 ---- */
 {
-  ok('detectMode 存在', /async function detectMode/.test(html));
-  ok('mobile 分支后台触发抓取（到期制，不阻塞启动）', /ZKLocal\.crawl\(false\)\.then/.test(html) && !/await ZKLocal\.crawl\(\)/.test(html));
-  ok('loadNews 移动分支走 ZKLocal.news', /ZKLocal\.news\(\{/.test(html));
-  ok('移动端 newsDetail 有定义且被调用', defsHave(html, 'ZKLocal', 'newsDetail') && /ZKLocal\.newsDetail\(/.test(html));
+  ok('detectMode 存在', /async function detectMode/.test(src));
+  ok('mobile 分支后台触发抓取（到期制，不阻塞启动）', /ZKLocal\.crawl\(false\)\.then/.test(src) && !/await ZKLocal\.crawl\(\)/.test(src));
+  ok('loadNews 移动分支走 ZKLocal.news', /ZKLocal\.news\(\{/.test(src));
+  ok('移动端 newsDetail 有定义且被调用', defsHave(src, 'ZKLocal', 'newsDetail') && /ZKLocal\.newsDetail\(/.test(src));
 }
 function defsHave(source, obj, method) {
   return definedMethods(source, `const ${obj} = {`).includes(method);

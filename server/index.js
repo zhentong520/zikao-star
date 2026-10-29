@@ -7,12 +7,17 @@ const fs = require('fs');
 const path = require('path');
 const { DatabaseSync } = require('node:sqlite');
 const { Crawler } = require('./crawler');
+const ZKCalc = require('../shared/calc.js');   // 双端共用计算核心（进度/均分/学位）
 
 const ROOT = path.join(__dirname, '..');
 const WEB = path.join(ROOT, 'web');
 const DB_PATH = process.env.ZK_DB || path.join(ROOT, 'data', 'zikao.db');
 const PORT = parseInt(process.env.PORT || '5173', 10);
-const HOST = process.env.HOST || '0.0.0.0';
+// 安全默认：只绑本机回环。服务无鉴权，绑 0.0.0.0 时同一 WiFi 下
+// 任何设备都能读写你的成绩/笔记。需要手机访问时显式：
+//   Windows (PowerShell):  $env:ZK_HOST='0.0.0.0'; npm start
+//   macOS/Linux:           ZK_HOST=0.0.0.0 npm start
+const HOST = process.env.ZK_HOST || process.env.HOST || '127.0.0.1';
 
 fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
 if (!fs.existsSync(DB_PATH)) {
@@ -67,6 +72,22 @@ function bestScore(ucId) {
   return r?.s ?? null;
 }
 
+/** 一次性取该 profile 全部成绩，按课程代码分组（供 shared/calc.js 纯函数使用）。
+ *  限定当前 group_id：换专业后旧组课程的成绩不计入新考纲。 */
+function scoreMapByCode(profileId) {
+  const rows = db.prepare(`
+    SELECT c.code AS code, s.score AS score, s.score_type AS score_type
+    FROM score_record s
+    JOIN user_course uc ON uc.id = s.user_course_id
+    JOIN course c ON c.id = uc.course_id
+    WHERE uc.profile_id=? AND c.group_id=(SELECT group_id FROM profile WHERE id=?)`).all(profileId, profileId);
+  const map = {};
+  for (const r of rows) {
+    (map[r.code] = map[r.code] || []).push({ score: r.score, score_type: r.score_type });
+  }
+  return map;
+}
+
 /**
  * 有效状态推导 —— 状态的唯一真相来源。
  *
@@ -83,45 +104,34 @@ function effectiveStatus(row) {
   return row.status || '未开始';
 }
 
-/** 毕业进度：已过学分 / 总学分（必考 + 需加考的课程） */
+/** 毕业进度 —— 算法委托 shared/calc.js（双端唯一真相），此处只做取数组装 */
 function computeProgress(profileId) {
-  const list = courseList(profileId);              // 必考
+  const list = courseList(profileId);              // 必考（含论文行）
   const addOn = addOnCourses(profileId);
   const needAddOn = [...addOn.active];              // 需要加考的课程代码
   const addOnList = addOn.courses.filter(c => needAddOn.includes(c.code));
-
-  // 实践课与其笔试课合并展示但学分独立计算
   const req = [...list, ...addOnList];
-  let earned = 0, total = 0, passedCount = 0, failCount = 0;
-  for (const c of req) {
-    if (c.is_thesis) continue;          // 论文不计学分
-    total += c.credits;
-    const s = bestScore(c.uc_id);
-    if (s !== null && s >= 60) { earned += c.credits; passedCount++; }
-    else if (s !== null) failCount++;
-  }
+
   const thesisRow = list.find(c => c.is_thesis);
-  const thesisDone = thesisRow ? (bestScore(thesisRow.uc_id) ?? (thesisRow.status === '已通过' ? 60 : null)) : null;
-  const creditsTotal = total || 1;
+  // 论文状态：有分用分；无分但手动标已通过则按 60 兜底（保持原行为）
+  const thesisScore = thesisRow
+    ? (bestScore(thesisRow.uc_id) ?? (thesisRow.status === '已通过' ? 60 : null))
+    : null;
+
   return {
-    earned, total, passedCount, failCount,
-    requiredCount: req.length,
+    ...ZKCalc.computeProgressCore({
+      courses: req.filter(c => !c.is_thesis),
+      scoresByCode: scoreMapByCode(profileId),
+      thesisScore,
+    }),
     addOnCount: addOnList.length,
-    percent: Math.round((earned / creditsTotal) * 1000) / 10,
-    thesisDone: thesisDone !== null,
-    thesisScore: thesisDone,
   };
 }
 
-/** 学位均分（加权）。规则来自各校细则：
- *  免考不计 · 补考及格按60 · 含加考/选考/论文 · 同科取最高 · 非百分制折算 */
-function convertScore(raw) {
-  if (raw === null || raw === undefined) return null;
-  if (typeof raw === 'number') return raw;
-  const map = { 优秀: 95, 良好: 85, 中等: 75, 及格: 65, 满分: 100 };
-  return map[raw] ?? (parseFloat(raw) || null);
-}
+/** 五级制/文字成绩 → 数值（委托 shared/calc.js） */
+const convertScore = (raw) => ZKCalc.convertScore(raw);
 
+/** 学位均分 —— 算法委托 shared/calc.js 的 computeDegreeCore（华师教学〔2025〕9 号口径） */
 function computeDegree(profileId) {
   const p = db.prepare('SELECT * FROM profile WHERE id=?').get(profileId);
   const rule = db.prepare(`SELECT * FROM degree_rule
@@ -130,122 +140,17 @@ function computeDegree(profileId) {
   // 均分口径：必考 + 需加考课程（华师细则：含加考、选考课程及毕业论文成绩）
   const addOn = addOnCourses(profileId);
   const list = [...courseList(profileId), ...addOn.courses.filter(c => addOn.active.has(c.code))];
-
-  // 逐科收集：已过科目用真实成绩，未过科目留空（后续按预测分计入）
-  const courseItems = [];
-  let failed = 0;
-  for (const c of list) {
-    if (c.is_thesis) continue;
-    const rows = db.prepare(`SELECT score,score_type FROM score_record WHERE user_course_id=?`).all(c.uc_id || -1);
-    const valid = rows.filter(r => r.score_type !== '免考' && r.score !== null)
-      .map(r => convertScore(r.score))
-      .filter(s => s !== null && s >= 60);
-    const best = valid.length ? Math.max(...valid) : null;
-    if (best !== null && best < 60) { failed++; continue; }
-    // 补考及格按 60 计（华师细则）
-    const isMakeup = rows.some(r => r.score_type === '补考');
-    const use = best === null ? null : (isMakeup && best < 70 ? 60 : best);
-    courseItems.push({ ...c, score: use, passed: use !== null });
-  }
-
-  const totalCredits = courseItems.reduce((s, c) => s + c.credits, 0);   // 分母：全部应考学分
-  const passedItems = courseItems.filter(c => c.passed);
-  const earnedSum = passedItems.reduce((s, c) => s + c.score * c.credits, 0);
-  const earnedCredits = passedItems.reduce((s, c) => s + c.credits, 0);
-  const credits = earnedCredits;                                   // 兼容旧字段名
-  const sum = earnedSum;
-
-  /**
-   * 均分口径（华师教学〔2025〕9 号）：
-   *   真实均分 = Σ(成绩×学分) / Σ(已过课程学分)
-   *   —— 官方口径只算已过课程，不足 20 门时属于「阶段性均分」。
-   *   预测均分 = Σ(成绩×学分 + 未过课程预测分×学分) / Σ(全部应考学分)
-   *   —— 模拟器用这个，才能回答「剩下的课要考多少分才够」。
-   */
-  const avg = earnedCredits > 0 ? Math.round((earnedSum / earnedCredits) * 10) / 10 : null;
-  const minAvg = rule.min_avg_score || 70;
-
-  /** 预测均分：把未过课程按 assumed 分计入，分母为全部应考学分 */
-  const predictAvg = (assumed = 70) => {
-    if (totalCredits <= 0) return null;
-    let s = earnedSum;
-    for (const c of courseItems) if (!c.passed) s += assumed * c.credits;
-    return Math.round((s / totalCredits) * 10) / 10;
-  };
-
-  // 模拟器：每个候选科目生成「该科考 v 分 → 预测均分」对照表
-  const simTargets = courseItems
-    .filter(c => c.credits > 0)
-    .sort((a, b) => {
-      if (a.passed !== b.passed) return a.passed ? 1 : -1;   // 未通过优先
-      return b.credits - a.credits;                          // 学分大的提分效率高
-    })
-    .slice(0, 8)
-    .map(c => {
-      const table = [];
-      for (let v = 0; v <= 100; v += 5) {
-        // earnedSum 已含所有已过科目，故这里只处理「未过科目」：
-        //   未过且非本门 → 按 70 分预估；本门 → 按 v 分
-        // 若本门已过（重考提分），需先从 earnedSum 中扣掉旧分再加新分。
-        let s = earnedSum - (c.passed ? c.score * c.credits : 0);
-        for (const o of courseItems) {
-          if (o.passed) continue;
-          if (o.code === c.code) s += v * o.credits;
-          else s += 70 * o.credits;
-        }
-        if (c.passed) s += v * c.credits;
-        table.push({ score: v, avg: Math.round((s / totalCredits) * 10) / 10 });
-      }
-      return { code: c.code, name: c.name, credits: c.credits, score: c.score, passed: c.passed, table };
-    });
-
-  const thesisRule = list.find(c => c.is_thesis);
-  const thesisScore = thesisRule ? bestScore(thesisRule.uc_id) : null;
-
-  const items = [
-    { key: 'avg', label: `课程平均分 ≥ ${minAvg} 分`, pass: avg !== null && avg >= minAvg,
-      detail: avg === null ? '暂无成绩记录' : `当前 ${avg} 分（加权，${courseItems.filter(c=>c.passed).length} 门参与计算）${failed ? ` · ${failed} 门未通过不计入` : ''}` },
-    { key: 'foreign', label: '学位外语成绩合格', pass: null,
-      detail: '最省事路径：自考「英语(专升本)」13000 统考合格即可自动达标（本专业开设该科）' },
-    { key: 'thesis', label: rule.thesis_min_score ? `毕业论文答辩 ≥ ${rule.thesis_min_score} 分` : '毕业论文合格',
-      pass: thesisScore !== null && (!rule.thesis_min_score || thesisScore >= rule.thesis_min_score),
-      detail: thesisScore !== null ? `当前 ${thesisScore} 分` : '2025-09 后毕业者适用，预计 2027-04 毕业需提前启动' },
-    { key: 'graduate', label: '毕业证书已取得', pass: false,
-      detail: '全部课程通过后可申请，距预计毕业还有约 6 个月' },
-  ];
-  const passedCount = items.filter(i => i.pass === true).length;
-  const pendingCount = items.filter(i => i.pass === null).length;
-
-  // 缺口测算（基于预测均分：未过课程按目标线计）
-  let advice = null;
-  const remain = courseItems.filter(c => !c.passed);
-  if (remain.length === 0) {
-    advice = `全部 ${courseItems.length} 门课程已通过，当前真实均分 ${avg} 分${avg >= minAvg ? '，已满足学位要求 ✓' : `，但未达 ${minAvg} 分线，需申请时复核`}。`;
-  } else {
-    // 让预测均分刚好达标所需的「剩余课程平均分」
-    const needSum = minAvg * totalCredits;              // 目标加权总分
-    const remainCredits = remain.reduce((s, c) => s + c.credits, 0);
-    const needOnRemain = (needSum - earnedSum) / (remainCredits || 1);
-    const p70 = predictAvg(70);
-    if (avg !== null && avg >= minAvg) {
-      advice = `当前真实均分 ${avg} 分已达标。但要注意：剩下 ${remain.length} 门（${remainCredits} 学分）还没考，` +
-        `若全部按 70 分算，最终均分约 ${p70} 分${p70 >= minAvg ? '，仍安全 ✓' : `，会掉到 ${minAvg} 分以下 ⚠️，建议稳在 75 分以上`}。`;
-    } else if (needOnRemain <= 60) {
-      advice = `真实均分 ${avg ?? '—'} 分，还差 ${(minAvg - avg).toFixed(1)} 分。剩下 ${remain.length} 门（${remainCredits} 学分）只要平均考 ${needOnRemain.toFixed(1)} 分就能达标，压力不大。`;
-    } else if (needOnRemain <= 100) {
-      advice = `真实均分 ${avg ?? '—'} 分，还差 ${(minAvg - avg).toFixed(1)} 分。剩下 ${remain.length} 门（${remainCredits} 学分）需平均考 ${needOnRemain.toFixed(1)} 分才够线。` +
-        (remain.some(c => c.credits >= 6) ? `建议重点抓高学分科目（${remain.filter(c=>c.credits>=6).map(c=>c.name).join('、')}），同样的提分在它们身上效率最高。` : '优先提分学分大的科目，同样努力效果更好。');
-    } else {
-      advice = `真实均分 ${avg ?? '—'} 分，还差 ${(minAvg - avg).toFixed(1)} 分。剩余学分不足以补齐，需要下轮重考已过科目中最低分的 1-2 门。`;
-    }
-  }
+  const thesisRow = list.find(c => c.is_thesis);
 
   return {
-    avg, minAvg, items, passedCount, pendingCount, rule, advice,
-    countedCredits: earnedCredits, totalCredits,
-    passedCourses: passedItems.length, failedCourses: failed,
-    predictAvg70: predictAvg(70),
-    simTargets,
+    ...ZKCalc.computeDegreeCore({
+      courses: list.filter(c => !c.is_thesis),
+      scoresByCode: scoreMapByCode(profileId),
+      minAvg: rule.min_avg_score || 70,
+      thesisMinScore: rule.thesis_min_score ?? null,
+      thesisScore: thesisRow ? bestScore(thesisRow.uc_id) : null,
+    }),
+    rule,
   };
 }
 
@@ -297,6 +202,9 @@ function courseDetail(profileId, courseCode) {
 }
 
 // ============ 路由 ============
+// 手动触发抓取的工作状态（Crawler 单例 + 防重入标志）
+const crawlJob = { crawler: null, running: false };
+
 const routes = {
   'GET /api/bootstrap': () => {
     const p = ensureProfile();
@@ -377,10 +285,14 @@ const routes = {
   },
 
   'GET /api/news/detail': (q) => {
-    const row = db.prepare('SELECT * FROM news WHERE id=?').get(parseInt(q.id, 10));
-    if (!row) return null;
-    db.prepare('UPDATE news SET is_read=1 WHERE id=?').run(row.id);
-    return row;
+    // 纯读：GET 不再做写操作（违反语义，且 SW 缓存该请求会把「已读」写进缓存层）
+    return db.prepare('SELECT * FROM news WHERE id=?').get(parseInt(q.id, 10)) || null;
+  },
+
+  'POST /api/news/read': (q, body) => {
+    const id = parseInt(body.id, 10);
+    const r = db.prepare('UPDATE news SET is_read=1 WHERE id=?').run(id);
+    return { ok: r.changes > 0 };
   },
 
   'GET /api/changes': () => db.prepare(`SELECT * FROM change_record
@@ -402,9 +314,16 @@ const routes = {
   'GET /api/crawl/log': () => db.prepare('SELECT * FROM crawl_log ORDER BY id DESC LIMIT 50').all(),
 
   'POST /api/crawl/run': async () => {
-    const c = new Crawler(DB_PATH);
-    const r = await c.runOnce(true);
-    return r;
+    // 复用单例：此前每次调用 new Crawler 开新 SQLite 连接且从不关闭；
+    // running 标志防重入（重复点击时直接返回，不再叠加一轮全量抓取）
+    if (!crawlJob.crawler) crawlJob.crawler = new Crawler(DB_PATH);
+    if (crawlJob.running) return { ok: false, message: '抓取正在进行中，请稍候' };
+    crawlJob.running = true;
+    try {
+      return await crawlJob.crawler.runOnce(true);
+    } finally {
+      crawlJob.running = false;
+    }
   },
 
   'POST /api/course/status': (q, body) => {
@@ -479,8 +398,11 @@ const routes = {
     if (body.nickname) db.prepare('UPDATE profile SET nickname=?,avatar_emoji=? WHERE id=?')
       .run(body.nickname, body.avatar_emoji || p.avatar_emoji, p.id);
     if (body.reset) {
+      // ⚠️ 只清当前 profile 的数据。此前 DELETE FROM score_record 没有 WHERE，
+      // 会清空全表（含其他 profile / 未来多用户场景），属灾难性误删。
+      db.prepare(`DELETE FROM score_record WHERE user_course_id IN
+        (SELECT uc.id FROM user_course uc WHERE uc.profile_id=?)`).run(p.id);
       db.prepare('DELETE FROM user_course WHERE profile_id=?').run(p.id);
-      db.prepare('DELETE FROM score_record').run();
     }
     return routes['GET /api/bootstrap']();
   },
@@ -516,11 +438,14 @@ const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, `http://${req.headers.host}`);
   const key = `${req.method} ${u.pathname}`;
 
-  // CORS（局域网内手机访问）
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
+  // CORS：默认同源访问（PC 浏览器 / 手机 PWA 加载的都是本服务页面），无需跨域放行。
+  // 仅在显式 LAN 模式（ZK_HOST=0.0.0.0）时放开，方便手机调试工具跨域调用。
+  if (HOST === '0.0.0.0' || HOST === '::') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
+  } else if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
 
   if (routes[key]) {
     try {
@@ -537,8 +462,10 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       return res.end(JSON.stringify(out ?? null));
     } catch (e) {
+      // 只返回 message，不返回 stack —— 避免向内网所有设备泄漏服务端实现细节
+      console.error(`[API] ${key} 出错:`, e);
       res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
-      return res.end(JSON.stringify({ error: e.message, stack: e.stack }));
+      return res.end(JSON.stringify({ error: e.message }));
     }
   }
 
@@ -551,14 +478,35 @@ const server = http.createServer(async (req, res) => {
   fs.createReadStream(fp).pipe(res);
 });
 
+// ============ 优雅停机 ============
+// Ctrl+C 时先停接新请求、等在途请求完成，再关 SQLite（WAL 落盘），避免 db-wal 残留
+function shutdown(signal) {
+  console.log(`\n👋 收到 ${signal}，正在关闭…`);
+  server.close(() => {
+    try { db.close(); } catch { /* 已关闭 */ }
+    process.exit(0);
+  });
+  // 兜底：5 秒内没退完就强退（长轮询/僵死连接）
+  setTimeout(() => { try { db.close(); } catch {} process.exit(0); }, 5000).unref();
+}
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+
 server.listen(PORT, HOST, () => {
   ensureProfile();
-  const nets = require('os').networkInterfaces();
-  const lan = Object.values(nets).flat().filter(n => n && n.family === 'IPv4' && !n.internal).map(n => n.address);
+  const lanVisible = HOST === '0.0.0.0' || HOST === '::';
+  let lanHint = '';
+  if (lanVisible) {
+    const nets = require('os').networkInterfaces();
+    const lan = Object.values(nets).flat().filter(n => n && n.family === 'IPv4' && !n.internal).map(n => n.address);
+    lanHint = lan.map(ip => `   手机访问：http://${ip}:${PORT}   (同一 WiFi)`).join('\n');
+  } else {
+    lanHint = `   手机访问：已关闭（服务仅监听本机）\n   如需手机同 WiFi 访问：ZK_HOST=0.0.0.0 npm start`;
+  }
   console.log(`
 🌸 自考星 已启动
    本机访问：http://localhost:${PORT}
-${lan.map(ip => `   手机访问：http://${ip}:${PORT}   (同一 WiFi)`).join('\n')}
+${lanHint}
    数据库：${DB_PATH}
 `);
 });

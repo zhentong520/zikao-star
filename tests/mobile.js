@@ -24,6 +24,7 @@ global.fetch = () => Promise.reject(new Error('无网络（测试环境）'));
 
 // 加载共享模块（web/shared 与 shared 同源，测 shared/ 即可）
 require(path.join(__dirname, '..', 'shared', 'rules.js'));
+require(path.join(__dirname, '..', 'shared', 'calc.js'));
 require(path.join(__dirname, '..', 'shared', 'store.js'));
 
 const R = global.ZKRules || global.window.ZKRules;

@@ -29,7 +29,13 @@ echo.
 echo   启动后请在浏览器打开：
 echo     http://localhost:5173
 echo.
-echo   手机使用（需同一 WiFi）：
+
+rem 默认开启局域网访问（双击启动通常就是为了让手机用）。
+rem 安全提示：服务无鉴权，请只在家庭等可信 WiFi 下使用；
+rem 只在本机用的话，把下面这行删掉或改为 127.0.0.1 即可。
+set ZK_HOST=0.0.0.0
+
+echo   手机使用（需同一 WiFi，仅限可信网络开启）：
 for /f "tokens=2 delims=:" %%a in ('ipconfig ^| findstr /c:"IPv4"') do (
   set IP=%%a
   set IP=%IP: =%

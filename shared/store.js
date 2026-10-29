@@ -10,6 +10,25 @@
  */
 
 const LS_KEY = 'zikao_v1';
+const LS_VERSION = 1;
+
+/**
+ * 版本化迁移钩子表：key = 「从哪个版本迁出」，值为迁移函数。
+ * 此前导出文件带 _v:1 却没有迁移代码 —— state 结构一变，老用户的
+ * localStorage 会被浅合并静默丢字段。结构变更时在此登记，例如升到 2：
+ *   2: (s) => { s.practice = s.practice || {}; delete s.legacyX; s._v = 2; return s; }
+ */
+const MIGRATIONS = {};
+
+function migrate(state) {
+  let v = state._v || 1;
+  while (MIGRATIONS[v]) {
+    state = MIGRATIONS[v](state) || state;
+    v = state._v || (v + 1);
+  }
+  state._v = LS_VERSION;
+  return state;
+}
 const DB_NAME = 'zikao_news';
 const DB_STORE = 'news';
 
@@ -40,7 +59,8 @@ function loadState() {
   if (_state) return _state;
   try {
     const raw = localStorage.getItem(LS_KEY);
-    _state = raw ? { ...DEFAULT_STATE, ...JSON.parse(raw) } : JSON.parse(JSON.stringify(DEFAULT_STATE));
+    _state = raw ? migrate({ ...DEFAULT_STATE, ...JSON.parse(raw) })
+                 : migrate(JSON.parse(JSON.stringify(DEFAULT_STATE)));
     _state.profile = { ...DEFAULT_STATE.profile, ...(_state.profile || {}) };
     _state.userCourse = _state.userCourse || {};
     _state.scoreRecords = _state.scoreRecords || {};
@@ -149,8 +169,10 @@ const SYLLABUS = {
     { key: 'gd_5184_zk', name: '广东考试服务网-自考地级市', url: 'https://5184.com/h-nr--0_31_21.html', type: '聚合', category: '报名', interval_min: 120 },
     // RSSHub 自部署实例（阿里云深圳 ECS）：标准 RSS、社区维护路由，站点改版零成本
     // type:'rss' → crawler-web.js 走 crawlRSS 解析分支
-    { key: 'rsshub_eea_kszs', name: '考试院RSS-考试招生', url: 'http://47.112.10.43:1200/gov/gd/eea/kszs', type: 'rss', category: '政策', interval_min: 60 },
-    { key: 'rsshub_eea_ywdt', name: '考试院RSS-要闻动态', url: 'http://47.112.10.43:1200/gov/gd/eea/ywdt', type: 'rss', category: '政策', interval_min: 120 },
+    // pcOnly:true → HTTP 源在 HTTPS WebView（APK androidScheme=https）会被
+    // mixed content 策略拦截，手机端抓取时自动跳过（此前表现为静默失败）
+    { key: 'rsshub_eea_kszs', name: '考试院RSS-考试招生', url: 'http://47.112.10.43:1200/gov/gd/eea/kszs', type: 'rss', category: '政策', interval_min: 60, pcOnly: true },
+    { key: 'rsshub_eea_ywdt', name: '考试院RSS-要闻动态', url: 'http://47.112.10.43:1200/gov/gd/eea/ywdt', type: 'rss', category: '政策', interval_min: 120, pcOnly: true },
     { key: 'gd_eea_home', name: '广东省教育考试院-首页要闻', url: 'https://eea.gd.gov.cn/', type: '官方', category: '政策', interval_min: 120 },
     { key: 'scnu_jky', name: '华师教育科学学院-通知公告', url: 'http://jky.scnu.edu.cn/index/tzgg.htm', type: '院校', category: '学位', interval_min: 120 },
     { key: 'szu_cce', name: '深大继续教育学院', url: 'https://cce.szu.edu.cn/', type: '院校', category: '学位', interval_min: 120 },
@@ -228,20 +250,13 @@ function getAddOnRule() {
   return { cat, ...(SYLLABUS.addOnRules[cat] || SYLLABUS.addOnRules['其他']) };
 }
 
-/** 最高分（免考不计） */
+/** 最高分（免考不计）—— 算法委托 shared/calc.js（双端唯一真相），此处只做取数 */
 /**
- * 最高分 —— 与 PC 端 server/index.js 的 bestScore 语义严格一致：
- * 返回该科最高分（**含不及格**，免考不计）。
- *
- * 曾经这里错误地过滤了 <60 的分数，导致双端状态推导不一致：
- * 录入 55 分时，PC 端显示「未通过」，手机端却显示「已考待出分」。
- * 及格线过滤由调用方负责（computeDegree / computeProgress 各自处理）。
+ * 最高分 —— 与 PC 端语义严格一致：返回该科最高分（**含不及格**，免考不计）。
+ * 及格线过滤由计算核心的调用方负责（computeDegreeCore / computeProgressCore）。
  */
 function bestScore(code) {
-  const arr = loadState().scoreRecords[code] || [];
-  const valid = arr.filter(r => r.score !== null && r.score !== undefined && r.score_type !== '免考')
-    .map(r => Number(r.score)).filter(s => !isNaN(s));
-  return valid.length ? Math.max(...valid) : null;
+  return ZKCalc.bestScoreOf(loadState().scoreRecords[code]);
 }
 function allScores(code) { return loadState().scoreRecords[code] || []; }
 
@@ -264,133 +279,35 @@ function getCreditsCourses() {
   return getExamCourses().filter(c => !c.is_thesis);
 }
 
-/** 毕业进度 */
+/** 毕业进度 —— 算法在 shared/calc.js（双端唯一真相），此处只做取数组装 */
 function computeProgress() {
-  const list = getCreditsCourses();
-  let earned = 0, total = 0, passed = 0, failed = 0;
-  list.forEach(c => {
-    total += c.credits;
-    const s = bestScore(c.code);
-    if (s !== null && s >= 60) { earned += c.credits; passed++; }
-    else if (s !== null) failed++;
-  });
   const thesis = SYLLABUS.courses.find(c => c.is_thesis);
-  const thesisDone = thesis ? (bestScore(thesis.code) !== null) : false;
-  return {
-    earned, total, passedCount: passed, failCount: failed,
-    requiredCount: list.length + (thesis ? 1 : 0),
-    percent: total ? Math.round((earned / total) * 1000) / 10 : 0,
-    thesisDone, thesisScore: thesis ? bestScore(thesis.code) : null,
-  };
+  return ZKCalc.computeProgressCore({
+    courses: getCreditsCourses(),
+    scoresByCode: loadState().scoreRecords,
+    thesisScore: thesis ? bestScore(thesis.code) : null,
+  });
 }
 
-const CONVERT = { 优秀: 95, 良好: 85, 中等: 75, 及格: 65, 满分: 100 };
-function convertScore(raw) {
-  if (raw === null || raw === undefined) return null;
-  if (typeof raw === 'number') return raw;
-  return CONVERT[raw] ?? (parseFloat(raw) || null);
-}
+/** 五级制/文字成绩 → 数值（委托 shared/calc.js） */
+const convertScore = (raw) => ZKCalc.convertScore(raw);
 
 /**
- * 学位均分 —— 与 PC 端完全同口径。
- *  真实均分 = Σ(成绩×学分) / Σ(已过学分)         ← 官方口径
- *  预测均分 = Σ(成绩×学分 + 未过×70) / Σ(全部学分)  ← 模拟器用
+ * 学位均分 —— 委托 shared/calc.js 的 computeDegreeCore。
+ * 返回字段名与 PC 端严格对齐（items/passedCount/pendingCount 等）：
+ * 曾叫 conditions/passedConditions，renderDegree 读 d.items.length 直接
+ * TypeError（APK 启动崩）——字段名必须一字不差，由 tests/degree.test.js 守护。
  */
 function computeDegree() {
-  const list = getCreditsCourses();
-  const items = [];
-  let failedCount = 0;
-  list.forEach(c => {
-    const arr = allScores(c.code);
-    const valid = arr.filter(r => r.score_type !== '免考' && r.score !== null && r.score !== undefined)
-      .map(r => convertScore(r.score)).filter(s => s !== null && s >= 60);
-    const best = valid.length ? Math.max(...valid) : null;
-    if (best !== null && best < 60) { failedCount++; return; }
-    const isMakeup = arr.some(r => r.score_type === '补考');
-    const use = best === null ? null : (isMakeup && best < 70 ? 60 : best);
-    items.push({ code: c.code, name: c.name, credits: c.credits, score: use, passed: use !== null });
-  });
-
-  const totalCredits = items.reduce((s, c) => s + c.credits, 0);
-  const passedItems = items.filter(c => c.passed);
-  const earnedSum = passedItems.reduce((s, c) => s + c.score * c.credits, 0);
-  const earnedCredits = passedItems.reduce((s, c) => s + c.credits, 0);
-  const avg = earnedCredits > 0 ? Math.round((earnedSum / earnedCredits) * 10) / 10 : null;
-  const minAvg = SYLLABUS.degreeRule.min_avg_score;
-  const predict = (assumed = 70) => {
-    if (!totalCredits) return null;
-    let s = earnedSum;
-    items.forEach(c => { if (!c.passed) s += assumed * c.credits; });
-    return Math.round((s / totalCredits) * 10) / 10;
-  };
-
-  // 模拟器对照表
-  const simTargets = items.filter(c => c.credits > 0)
-    .sort((a, b) => (a.passed !== b.passed) ? (a.passed ? 1 : -1) : (b.credits - a.credits))
-    .slice(0, 8)
-    .map(c => {
-      const table = [];
-      for (let v = 0; v <= 100; v += 5) {
-        let s = earnedSum - (c.passed ? c.score * c.credits : 0);
-        items.forEach(o => {
-          if (o.passed) return;
-          s += (o.code === c.code ? v : 70) * o.credits;
-        });
-        if (c.passed) s += v * c.credits;
-        table.push({ score: v, avg: Math.round((s / totalCredits) * 10) / 10 });
-      }
-      return { code: c.code, name: c.name, credits: c.credits, score: c.score, passed: c.passed, table };
-    });
-
-  // 提分建议
-  const remain = items.filter(c => !c.passed);
-  let advice;
-  const p70 = predict(70);
-  if (!remain.length) {
-    advice = `全部 ${items.length} 门课程已通过，真实均分 ${avg} 分${avg >= minAvg ? '，已满足学位要求 ✓' : `，未达 ${minAvg} 分线，需申请时复核`}。`;
-  } else {
-    const remainCredits = remain.reduce((s, c) => s + c.credits, 0);
-    const needOnRemain = (minAvg * totalCredits - earnedSum) / (remainCredits || 1);
-    if (avg !== null && avg >= minAvg) {
-      advice = `真实均分 ${avg} 分已达标。但剩下 ${remain.length} 门（${remainCredits} 学分）还没考，若全部按 70 分算最终均分约 ${p70} 分${p70 >= minAvg ? '，仍安全 ✓' : `，会掉到 ${minAvg} 分以下 ⚠️，建议稳在 75 分以上`}。`;
-    } else if (needOnRemain <= 60) {
-      advice = `真实均分 ${avg ?? '—'} 分，还差 ${(minAvg - avg).toFixed(1)} 分。剩下 ${remain.length} 门（${remainCredits} 学分）平均考 ${needOnRemain.toFixed(1)} 分即可达标，压力不大。`;
-    } else if (needOnRemain <= 100) {
-      const big = remain.filter(c => c.credits >= 6).map(c => c.name);
-      advice = `真实均分 ${avg ?? '—'} 分，还差 ${(minAvg - avg).toFixed(1)} 分。剩下 ${remain.length} 门（${remainCredits} 学分）需平均考 ${needOnRemain.toFixed(1)} 分才够线。` +
-        (big.length ? `建议重点抓高学分科目（${big.join('、')}），同样提分效率最高。` : '优先提分学分大的科目。');
-    } else {
-      advice = `真实均分 ${avg ?? '—'} 分，还差 ${(minAvg - avg).toFixed(1)} 分。剩余学分不足以补齐，需下轮重考已过科目中最低分的 1-2 门。`;
-    }
-  }
-
-  // 学位条件清单
   const thesisCode = (SYLLABUS.courses.find(c => c.is_thesis) || {}).code;
-  const thesisScore = thesisCode ? bestScore(thesisCode) : null;
-  const conditions = [
-    { key: 'avg', label: `课程平均分 ≥ ${minAvg} 分`, pass: avg !== null && avg >= minAvg,
-      detail: avg === null ? '暂无成绩记录' : `当前 ${avg} 分（加权，${passedItems.length} 门参与计算）${failedCount ? ` · ${failedCount} 门未通过不计入` : ''}` },
-    { key: 'foreign', label: '学位外语成绩合格', pass: null,
-      detail: '最省事路径：自考「英语(专升本)」13000 统考合格即可自动达标（本专业开设该科）' },
-    { key: 'thesis', label: `毕业论文答辩 ≥ ${SYLLABUS.degreeRule.thesis_min_score} 分`,
-      pass: thesisScore !== null && thesisScore >= SYLLABUS.degreeRule.thesis_min_score,
-      detail: thesisScore !== null ? `当前 ${thesisScore} 分` : '2025-09 后毕业者适用，需提前启动' },
-    { key: 'graduate', label: '毕业证书已取得', pass: false, detail: '全部课程通过后可申请' },
-  ];
-
-  /**
-   * 返回字段名与 PC 端 server/index.js computeDegree 严格对齐：
-   * items=条件清单、passedCount/pendingCount=条件达标/待定数。
-   * 曾经叫 conditions/passedConditions，renderDegree 读 d.items.length
-   * 直接 TypeError（APK 启动崩），PC 端却正常——双端字段名必须一字不差。
-   */
   return {
-    avg, minAvg, countedCredits: earnedCredits, totalCredits,
-    passedCourses: passedItems.length, failedCourses: failedCount,
-    predictAvg70: p70, simTargets, advice,
-    items: conditions,
-    passedCount: conditions.filter(c => c.pass === true).length,
-    pendingCount: conditions.filter(c => c.pass === null).length,
+    ...ZKCalc.computeDegreeCore({
+      courses: getCreditsCourses(),
+      scoresByCode: loadState().scoreRecords,
+      minAvg: SYLLABUS.degreeRule.min_avg_score,
+      thesisMinScore: SYLLABUS.degreeRule.thesis_min_score,
+      thesisScore: thesisCode ? bestScore(thesisCode) : null,
+    }),
     rule: SYLLABUS.degreeRule,
   };
 }
@@ -536,7 +453,7 @@ window.ZKStore = {
   SYLLABUS, loadState, saveState,
   getProfile, setProfile, getGroup, setSetting,
   getRequiredAddOn, getAddOnRule,
-  bestScore, allScores, effectiveStatus,
+  bestScore, allScores, effectiveStatus, convertScore,
   getExamCourses, getCreditsCourses,
   computeProgress, computeDegree,
   setCourseStatus, saveScore, deleteScore,

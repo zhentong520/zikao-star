@@ -76,3 +76,6 @@ logs/
 *.bak
 *~
 .cache/
+
+# ===== WorkBuddy 本地工作区数据（项目记忆/会话数据，勿提交） =====
+.workbuddy/

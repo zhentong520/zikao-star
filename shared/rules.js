@@ -115,6 +115,7 @@ function stripTags(html = '') {
     String(html)
       .replace(/<script[\s\S]*?<\/script>/gi, '')
       .replace(/<style[\s\S]*?<\/style>/gi, '')
+      .replace(/<br\s*\/?>/gi, '\n')                    // br 保留换行（原 PC 端 crawler 版行为）
       .replace(/<\/(p|div|tr|li|h[1-6])>/gi, '\n')
       .replace(/<[^>]+>/g, '')
   ).replace(/[ \t　]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
@@ -247,6 +248,7 @@ const ZKRules = {
   stripTags, extractLinks, extractMainText, decodeEntities,
   calcRelevance, guessPublishedAt, simpleHash,
   CATEGORY_RULES, URGENT_PATTERNS, KNOWN_CODES,
+  SELF_STUDY_SIGNS, IRRELEVANT_SIGNS, OTHER_PROVINCE_SIGNS,
   GD_EXAM_MONTHS, GD_ENROLL_MONTHS,
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = ZKRules;

@@ -38,3 +38,21 @@ if (fs.existsSync(BANKS_SRC)) {
   n += m;
 }
 console.log(`✅ 已同步 ${n} 个文件：shared/ → web/shared/`);
+
+// ============ SW 缓存版本号自动打点 ============
+// 此前 VERSION 是手写字符串（'zikao-v3'），忘记改就让用户永远吃旧缓存。
+// 放在 sync-shared（cap:sync 的必经前置步骤）里，每次构建自动失效旧缓存。
+// 注意：git 会看到 sw.js 变动，这是预期行为（版本号随构建变化）。
+const SW = path.join(__dirname, '..', 'web', 'sw.js');
+if (fs.existsSync(SW)) {
+  const d = new Date();
+  const pad = x => String(x).padStart(2, '0');
+  const stamp = `zikao-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
+  let sw = fs.readFileSync(SW, 'utf8');
+  const before = sw;
+  sw = sw.replace(/const VERSION\s*=\s*'[^']*'/, `const VERSION = '${stamp}'`);
+  if (sw !== before) {
+    fs.writeFileSync(SW, sw);
+    console.log(`  ✓ sw.js 缓存版本 → ${stamp}`);
+  }
+}

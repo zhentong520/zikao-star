@@ -1,0 +1,35 @@
+# 自考星 CI：核心业务逻辑回归
+# 范围：学位算法单测（node:test）+ 移动端逻辑自测（模拟 WebView）
+# 说明：tests/smoke.js 依赖本机 Edge 路径与演示库，仅本地手跑，不进 CI
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 学位算法单测（15 用例）
+        run: npm run test:degree
+
+      - name: 移动端逻辑测试（WebView 模拟）
+        run: npm run test:mobile
+
+      - name: 模块加载冒烟
+        run: node -e "require('./server/crawler/index.js'); require('./shared/rules.js'); console.log('modules OK')"
+
+      - name: shared 同步检查（web/shared 应可生成且 sw.js 版本可打点）
+        run: node scripts/sync-shared.js

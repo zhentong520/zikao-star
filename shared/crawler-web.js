@@ -275,7 +275,11 @@
       const all = await S.idbAll();
       const existingHashes = new Set(all.map(r => r.hash));
       const sources = S.SYLLABUS.sources;
+      // HTTPS 上下文（APK 的 androidScheme=https / https PWA）下，
+      // 标记为 pcOnly 的 HTTP 源会被 mixed content 策略拦截，直接跳过
+      const httpsCtx = (typeof location !== 'undefined' && location.protocol === 'https:');
       const list = force ? sources : sources.filter(s => {
+        if (httpsCtx && s.pcOnly) return false;
         const last = S.loadState().sourceLog?.[s.key];
         if (!last) return true;
         const due = dynamicInterval(s.interval_min, S.loadState().settings.crawlMultiplier) * 60000;

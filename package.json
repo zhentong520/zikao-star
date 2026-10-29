@@ -37,6 +37,8 @@
     "sync:shared": "node scripts/sync-shared.js",
     "banks": "python scripts/build-quiz-banks.py",
     "test:quiz": "node tests/quiz.js",
+    "test:degree": "node --test tests/degree.test.js",
+    "test:mobile": "node tests/mobile.js",
     "cap:sync": "npm run sync:shared && cap sync",
     "cap:android": "npm run cap:sync && cap open android",
     "cap:ios": "npm run cap:sync && cap open ios",
