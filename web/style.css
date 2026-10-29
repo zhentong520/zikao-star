@@ -14,8 +14,12 @@
 body{font-family:"PingFang SC","HarmonyOS Sans","Microsoft YaHei",-apple-system,sans-serif;
   background:#EFE6E1;color:var(--t1);line-height:1.6;overscroll-behavior-y:none}
 .num{font-variant-numeric:tabular-nums}
-#app{max-width:480px;margin:0 auto;background:var(--bg);min-height:100vh;position:relative;
-  box-shadow:0 0 40px rgba(0,0,0,.08);display:flex;flex-direction:column}
+#app{max-width:480px;margin:0 auto;background:var(--bg);position:relative;
+  box-shadow:0 0 40px rgba(0,0,0,.08);display:flex;flex-direction:column;
+  /* 固定视口高度：tabbar 必须常驻首屏底部。此前用 min-height:100vh，
+     内容一长 Tab 栏就被推到页面最底，手机上首屏看不到导航（真机 bug）。
+     100dvh 为动态视口（兼容地址栏伸缩），旧 WebView 回退 100vh */
+  height:100vh;height:100dvh;min-height:0}
 
 /* 状态栏 */
 .sbar{height:calc(var(--safe-t) + 30px);display:flex;align-items:flex-end;justify-content:space-between;
