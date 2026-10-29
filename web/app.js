@@ -431,9 +431,10 @@ let MODE = IS_Capacitor ? 'mobile' : 'pc';
 async function detectMode(){
   if(IS_Capacitor) return 'mobile';
   try{
-    const c=new AbortController(); setTimeout(()=>c.abort(),1200);
+    const c=new AbortController();
+    const timer=setTimeout(()=>c.abort(),1200);   // 必须存住句柄——原代码 clearTimeout(c.timeout) 清的是不存在的属性
     const r=await fetch('/api/bootstrap',{signal:c.signal});
-    clearTimeout(c.timeout);
+    clearTimeout(timer);
     if(r.ok) return 'pc';
   }catch(e){}
   return 'mobile';
@@ -1032,6 +1033,7 @@ async function openArticle(id){
     if(!n){toast('资讯不存在');return}
     // 已读标记独立走 POST（此前 GET /api/news/detail 顺带写库，违反 HTTP 语义）
     if(MODE==='pc'){ POST('/api/news/read',{id}).catch(()=>{}); const it=(S.news||[]).find(x=>x.id===id); if(it) it.is_read=1; }
+    else { n.is_read=1; window.ZKStore.idbPut([n]).catch(()=>{}); }   // 移动端此前从不标已读，变动预警永远不清
     const body=(n.content||n.summary||'（正文未抓取到，可点击下方查看原文）');
     $('#artScroll').innerHTML=`
       <div class="appbar">

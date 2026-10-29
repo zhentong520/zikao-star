@@ -1,5 +1,6 @@
 @echo off
 chcp 65001 >nul
+setlocal enabledelayedexpansion
 title 自考星 - 本地服务
 cd /d "%~dp0"
 
@@ -37,9 +38,9 @@ set ZK_HOST=0.0.0.0
 
 echo   手机使用（需同一 WiFi，仅限可信网络开启）：
 for /f "tokens=2 delims=:" %%a in ('ipconfig ^| findstr /c:"IPv4"') do (
-  set IP=%%a
-  set IP=%IP: =%
-  echo     http://%IP%:5173
+  set "IP=%%a"
+  set "IP=!IP: =!"
+  echo     http://!IP!:5173
 )
 
 echo.

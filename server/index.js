@@ -231,8 +231,9 @@ const routes = {
 
   'GET /api/courses': () => {
     const p = ensureProfile();
+    const scores = scoreMapByCode(p.id);   // 单次取全部成绩，替代逐课查询（原 ~22 条 SQL/请求）
     const main = courseList(p.id).map(c => {
-      const best = bestScore(c.uc_id);
+      const best = ZKCalc.bestScoreOf(scores[c.code]);
       return {
         ...c,
         bestScore: best,
@@ -250,7 +251,7 @@ const routes = {
         rule: addOn.rule,
         active: [...addOn.active],
         courses: addOn.courses.map(c => {
-          const best = bestScore(c.uc_id);
+          const best = ZKCalc.bestScoreOf(scores[c.code]);
           return {
             ...c,
             required: addOn.active.has(c.code),
