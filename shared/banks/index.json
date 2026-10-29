@@ -6,7 +6,8 @@
    "title": "习概 · 冲刺预测 50 题",
    "course": "15040",
    "total": 50,
-   "subtitle": "15040｜2026年10月考期高频考点"
+   "subtitle": "15040｜2026年10月考期高频考点",
+   "province": "nationwide"
   },
   {
    "id": "13005-sprint",
@@ -14,7 +15,8 @@
    "title": "软件工程 · 冲刺预测 50 题",
    "course": "13005",
    "total": 50,
-   "subtitle": "13005｜2026年10月考期高频考点"
+   "subtitle": "13005｜2026年10月考期高频考点",
+   "province": "nationwide"
   },
   {
    "id": "13005-yati",
@@ -22,7 +24,8 @@
    "title": "软工 · 考前终极押题",
    "course": "13005",
    "total": 54,
-   "subtitle": "13005｜单选 22 · 填空 20 · 简答 12"
+   "subtitle": "13005｜单选 22 · 填空 20 · 简答 12",
+   "province": "nationwide"
   }
  ],
  "builtAt": "2026-10-28"

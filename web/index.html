@@ -534,7 +534,7 @@ $$('.tab').forEach(t=>t.onclick=()=>go(t.dataset.s));
  * 记录：ZKStore.practice（localStorage，随导出/导入走）
  * 题型：single 单选 / multi 多选 / fill 填空 / short 简答（自评）
  */
-const QB = { banks:null, cache:{}, list:[], bank:null, bid:'', idx:0, sel:new Set(), mode:'all', revealed:false };
+const QB = { banks:null, predict:null, cache:{}, list:[], bank:null, bid:'', idx:0, sel:new Set(), mode:'all', focus:null, revealed:false };
 // esc() 复用文件后面的通用转义函数（本模块函数均在运行时调用，安全）
 
 async function loadBankIndex(){
@@ -543,6 +543,10 @@ async function loadBankIndex(){
     const idx = await API('shared/banks/index.json');
     QB.banks = idx.banks || [];
   } catch(e){ QB.banks = []; }
+  try {
+    const p = await API('shared/banks/predict.json');
+    QB.predict = p && p.courses ? p : null;
+  } catch(e){ QB.predict = null; }
   return QB.banks;
 }
 async function loadBankFile(file){
@@ -557,6 +561,27 @@ function flattenBank(bank){
   return out;
 }
 
+// ---------- 考纲/省份过滤 ----------
+// 只显示「用户考纲里的科目」+「用户所在省份可用」的题库，防止乱刷
+function filterBanksBySyllabus(banks){
+  const courses = ZKStore.getExamCourses().map(c=>c.code);
+  const prof = ZKStore.getProfile();
+  return banks.filter(m=>{
+    if(m.province && m.province!=='nationwide' && m.province!==prof.province_code) return false;
+    return !m.course || courses.includes(m.course);
+  });
+}
+function bankHiddenCount(banks){
+  return banks.length - filterBanksBySyllabus(banks).length;
+}
+
+// ---------- 考点预测 ----------
+function focusMatch(q, hs){
+  return (hs.match||[]).some(kw => (q.kp||'').includes(kw) || (q.stem||'').includes(kw));
+}
+// 某题库中命中某考点的题目数
+function focusCount(qs, hs){ return qs.filter(q=>focusMatch(q,hs)).length; }
+
 // ---------- 题库列表 ----------
 async function renderQuiz(){
   const body=$('#quizBody');
@@ -568,15 +593,56 @@ async function renderQuiz(){
     $('#quizSub').textContent='—';
     return;
   }
+  const shown = filterBanksBySyllabus(banks);
+  const hidden = bankHiddenCount(banks);
+  if(!shown.length){
+    body.innerHTML='<div class="empty"><div class="e">📭</div>当前考纲下暂无题库<br><span style="font-size:11.5px">题库按科目与省份匹配，你的考纲科目出题后会自动出现</span></div>';
+    $('#quizSub').textContent='—';
+    return;
+  }
+  // 考点预测卡（按显示的题库科目，取有预测数据的）
+  let predCards='';
+  if(QB.predict){
+    const seenCourse = {};
+    for(const m of shown){
+      if(seenCourse[m.course]) continue;   // 同科目多个题库只渲染一张预测卡
+      seenCourse[m.course] = true;
+      const pred = QB.predict.courses[m.course];
+      if(!pred || !(pred.hotspots||[]).length) continue;
+      let bank; try{ bank = await loadBankFile(m.file); }catch(e){ continue; }
+      const qs = flattenBank(bank);
+      const hs = pred.hotspots.slice(0,8);
+      const rows = hs.map((h,i)=>{
+        const n = focusCount(qs, h);
+        const sess = (pred.sessions||[]).slice(0, h.count).join(' ');
+        return `<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-top:${i?'1px solid var(--line)':'none'}">
+          <div style="min-width:0;flex:1">
+            <div style="font-size:12.5px;font-weight:600">${esc(h.kp)} <span style="color:var(--warn,#d97706);font-size:10.5px">×${h.count} 场</span></div>
+            <div style="font-size:10.5px;color:var(--t3);margin-top:2px;line-height:1.5">${esc(h.note||'')}</div>
+            ${sess?`<div style="font-size:9.5px;color:var(--t3);margin-top:2px">考期：${esc(sess)}${(pred.sessions||[]).length>h.count?' 等':''}</div>`:''}
+          </div>
+          ${n?`<button class="btn btn-f" style="flex-shrink:0" onclick="startBank('${m.id}','${m.file}','all','${(h.match||[]).join('|')}','考点：${esc(h.kp)}')">练 ${n} 题</button>`:''}
+        </div>`;
+      }).join('');
+      predCards += `<div class="qcard qpred" style="border-left:3px solid var(--warn,#d97706)">
+        <div class="card-t"><span>🎯 考点预测 · ${esc(pred.name||m.title.split(' ')[0])}</span>
+          <span class="chip c-wait">近 ${(pred.sessions||[]).length} 场真题</span></div>
+        <div style="font-size:10.5px;color:var(--t3);margin-bottom:4px">依据：${esc(pred.basis||'历代真题考点统计')}</div>
+        ${rows}
+        ${(pred.patterns||[]).length?`<details style="margin-top:8px"><summary style="font-size:11px;color:var(--t2);cursor:pointer">命题规律（${pred.patterns.length} 条）</summary>
+          <ul style="font-size:10.5px;color:var(--t3);line-height:1.8;margin:6px 0 0;padding-left:16px">${pred.patterns.map(p=>`<li>${esc(p)}</li>`).join('')}</ul></details>`:''}
+      </div>`;
+    }
+  }
   let totalAll=0, doneAll=0, rightAll=0, cards='';
-  for(const m of banks){
+  for(const m of shown){
     let bank; try{ bank = await loadBankFile(m.file); }catch(e){ continue; }
     const qs = flattenBank(bank);
     const st = ZKStore.practiceStats(m.id, qs);
     totalAll+=st.total; doneAll+=st.done; rightAll+=st.right;
     const pg = st.total? Math.round(st.done/st.total*100) : 0;
     const finished = st.total>0 && st.done===st.total;
-    cards += `<div class="qcard">
+    cards += `<div class="qcard qbank">
       <div class="card-t"><span>${esc(m.title)}</span>
         <span class="chip ${finished?'c-done':(st.done?'c-ing':'c-wait')}">${st.done?(finished?'已完成 '+st.rate+'%':'正确率 '+st.rate+'%'):'未开始'}</span></div>
       <div style="font-size:11px;color:var(--t3);margin-bottom:2px">${esc(m.subtitle||'')}</div>
@@ -591,49 +657,57 @@ async function renderQuiz(){
     </div>`;
   }
   const rate = doneAll? Math.round(rightAll/doneAll*100):0;
-  $('#quizSub').textContent = `共 ${totalAll} 题 · 已练 ${doneAll} 题`;
+  $('#quizSub').textContent = `共 ${totalAll} 题 · 已练 ${doneAll} 题${hidden?` · 已按考纲隐藏 ${hidden} 个题库`:''}`;
   body.innerHTML = `
     <div class="qstat">
       <div class="c hl"><b class="num">${doneAll}</b><span>已练题数</span></div>
       <div class="c"><b class="num">${totalAll-doneAll}</b><span>待练</span></div>
       <div class="c"><b class="num">${rate}%</b><span>正确率</span></div>
     </div>
+    ${predCards}
     ${cards}
     <div style="font-size:10.5px;color:var(--t3);line-height:1.7;padding:6px 4px">
-      题库来自冲刺阶段自编预测题，非当次考试真题，仅用于考点覆盖练习。答错的题会自动进错题本，考前只刷错题性价比最高。
+      题库按你的考纲科目与所在省份自动匹配，只显示能刷的题。考点预测来自历代真题频次统计：×N 场 = 近几次考试考过几次，建议先练高频考点再全覆盖。答错的题会自动进错题本，考前只刷错题性价比最高。
     </div>`;
 }
 
 function quizHelp(){
   openSheet('怎么刷最有效', `
     <div style="font-size:13px;line-height:1.9;color:var(--t2)">
-      <p><b style="color:var(--t1)">① 单选/多选</b>：点选项即判对错，答完立刻看考点，错当场记。</p>
-      <p><b style="color:var(--t1)">② 填空/简答</b>：先在纸上写，再点「看答案」自评，别偷懒直接看。</p>
-      <p><b style="color:var(--t1)">③ 错题本</b>：考前 3 天只刷错题，性价比最高；错题刷对后会从错题本消失。</p>
-      <p><b style="color:var(--t1)">④ 进度</b>：记录存在本机，导出数据时会一起带走。</p>
+      <p><b style="color:var(--t1)">① 考点预测</b>：页顶 🎯 卡片按历代真题频次排考点，×N 场 = 考过几次，先练高频再全覆盖，这就是预习路径。</p>
+      <p><b style="color:var(--t1)">② 单选/多选</b>：点选项即判对错，答完立刻看考点，错当场记。</p>
+      <p><b style="color:var(--t1)">③ 填空/简答</b>：先在纸上写，再点「看答案」自评，别偷懒直接看。</p>
+      <p><b style="color:var(--t1)">④ 错题本</b>：考前 3 天只刷错题，性价比最高；错题刷对后会从错题本消失。</p>
+      <p><b style="color:var(--t1)">⑤ 题库匹配</b>：只显示你考纲里有的科目和省份可用的题库，不会乱刷。</p>
     </div>`);
 }
 
 // ---------- 开始答题 ----------
-async function startBank(id, file, mode){
+async function startBank(id, file, mode, focusKw, focusLabel){
   mode = mode || 'all';
   const bank = await loadBankFile(file);
   let qs = flattenBank(bank);
   if(mode==='wrong'){
     qs = ZKStore.wrongQuestions(id, qs);
     if(!qs.length){ toast('这个题库暂时没有错题 🎉'); return; }
+    QB.focus = null;
+  } else if(focusKw){
+    // 考点聚焦：只练命中该考点的题（考点预测卡入口）
+    const kws = String(focusKw).split('|').filter(Boolean);
+    const hs = { match: kws };
+    qs = qs.filter(q=>focusMatch(q,hs));
+    if(!qs.length){ toast('该考点暂无对应题目'); return; }
+    QB.focus = { label: focusLabel || '考点聚焦' };
+  } else {
+    QB.focus = null;
   }
   QB.bank=bank; QB.bid=id; QB.list=qs; QB.mode=mode; QB.sel=new Set(); QB.revealed=false;
   const rec = ZKStore.getPractice(id);
   if(mode==='wrong'){ QB.idx=0; }
   else {
-    // 继续：优先从上次位置；若该位置已答完则找第一道未答
-    let i = Math.min(rec.last||0, qs.length-1);
-    if(rec.rec[qs[i]?.id]) {
-      const next = qs.findIndex(q=>!rec.rec[q.id]);
-      i = next>=0 ? next : i;
-    }
-    QB.idx = i;
+    // 继续：从第一道未答的题开始（focus 模式列表是子集，按列表内位置走）
+    const next = qs.findIndex(q=>!rec.rec[q.id]);
+    QB.idx = next>=0 ? next : 0;
   }
   go('run');
 }
@@ -698,7 +772,7 @@ function renderRun(){
   box.innerHTML = `
     <div class="qhead">
       <button class="back" onclick="quitRun()">←</button>
-      <div class="qt">${esc(title)}${QB.mode==='wrong'?' · 错题重刷':''}</div>
+      <div class="qt">${esc(title)}${QB.focus?` · ${esc(QB.focus.label)}`:''}${QB.mode==='wrong'?' · 错题重刷':''}</div>
       <div class="qn num">${QB.idx+1}/${QB.list.length}</div>
     </div>
     <div class="bar" style="margin-bottom:14px"><i style="width:${Math.round((QB.idx+1)/QB.list.length*100)}%"></i></div>
