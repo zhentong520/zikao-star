@@ -35,6 +35,8 @@
     "daemon": "node server/daemon.js",
     "icons": "node web/make-icons.js",
     "sync:shared": "node scripts/sync-shared.js",
+    "banks": "python scripts/build-quiz-banks.py",
+    "test:quiz": "node tests/quiz.js",
     "cap:sync": "npm run sync:shared && cap sync",
     "cap:android": "npm run cap:sync && cap open android",
     "cap:ios": "npm run cap:sync && cap open ios",
@@ -43,7 +45,8 @@
   },
   "devDependencies": {
     "@capacitor/cli": "^6.2.2",
-    "@capacitor/core": "^6.2.2"
+    "@capacitor/core": "^6.2.2",
+    "jsdom": "^30.1.3"
   },
   "dependencies": {
     "@capacitor/android": "^6.2.2",

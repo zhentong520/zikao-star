@@ -22,4 +22,19 @@ for (const f of fs.readdirSync(SRC)) {
   n++;
   console.log('  ✓', f);
 }
+
+// 题库 JSON（shared/banks/*.json）也要随 APK 打包，否则离线刷题没有题
+const BANKS_SRC = path.join(SRC, 'banks');
+const BANKS_DST = path.join(DST, 'banks');
+if (fs.existsSync(BANKS_SRC)) {
+  fs.mkdirSync(BANKS_DST, { recursive: true });
+  let m = 0;
+  for (const f of fs.readdirSync(BANKS_SRC)) {
+    if (!f.endsWith('.json')) continue;
+    fs.copyFileSync(path.join(BANKS_SRC, f), path.join(BANKS_DST, f));
+    m++;
+  }
+  console.log(`  ✓ banks/ ${m} 个题库 JSON`);
+  n += m;
+}
 console.log(`✅ 已同步 ${n} 个文件：shared/ → web/shared/`);

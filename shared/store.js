@@ -29,6 +29,8 @@ const DEFAULT_STATE = {
   settings: { autoCrawl: true, lastCrawlAt: '', crawlMultiplier: 1 },
   // favDirections: 收藏的论文方向标题
   favDirections: [],
+  // practice: 刷题记录 { [bankId]: { rec: { [qid]: {c, ok, ts} }, last: 上次做到第几题 } }
+  practice: {},
 };
 
 /* ============ 状态读写 ============ */
@@ -42,6 +44,7 @@ function loadState() {
     _state.profile = { ...DEFAULT_STATE.profile, ...(_state.profile || {}) };
     _state.userCourse = _state.userCourse || {};
     _state.scoreRecords = _state.scoreRecords || {};
+    _state.practice = _state.practice || {};
     _state.settings = { ...DEFAULT_STATE.settings, ...(_state.settings || {}) };
   } catch (e) {
     console.warn('状态读取失败，重置', e);
@@ -456,6 +459,55 @@ function toggleFavDirection(title) {
 }
 function getFavDirections() { return loadState().favDirections || []; }
 
+/* ============ 刷题（练习记录 / 错题本） ============ */
+/**
+ * 为什么存在 localStorage 而不是另起数据库：
+ *   题量 150+、每答一题只存 {选项,对错,时间}，一年下来也就几十 KB，
+ *   塞进主 state 的好处是导出/导入时刷题记录跟着走，不丢历史。
+ *
+ * 结构：practice[bankId] = { rec: { [qid]: {c:'A', ok:1|0, ts} }, last: 上一次做到的下标 }
+ */
+function getPractice(bankId) {
+  const s = loadState();
+  return s.practice[bankId] || { rec: {}, last: 0 };
+}
+function recordPractice(bankId, qid, chosen, ok, last) {
+  const s = loadState();
+  const b = s.practice[bankId] || (s.practice[bankId] = { rec: {}, last: 0 });
+  b.rec[qid] = { c: chosen, ok: ok ? 1 : 0, ts: Date.now() };
+  if (typeof last === 'number') b.last = last;
+  saveState();
+}
+function resetPractice(bankId) {
+  const s = loadState();
+  delete s.practice[bankId];
+  saveState();
+}
+/** 某题库的统计：做过的题数 / 正确数 / 错误数 / 正确率 */
+function practiceStats(bankId, questions) {
+  const rec = getPractice(bankId).rec;
+  const ids = (questions || []).map(q => q.id).filter(Boolean);
+  let done = 0, right = 0;
+  const pool = ids.length ? ids : Object.keys(rec);
+  for (const id of pool) {
+    const r = rec[id];
+    if (!r) continue;
+    done++;
+    if (r.ok) right++;
+  }
+  const total = ids.length || pool.length;
+  return {
+    total, done, right, wrong: done - right,
+    left: Math.max(0, total - done),
+    rate: done ? Math.round((right / done) * 100) : 0,
+  };
+}
+/** 错题（按题库里的原始顺序返回题目对象） */
+function wrongQuestions(bankId, questions) {
+  const rec = getPractice(bankId).rec;
+  return (questions || []).filter(q => rec[q.id] && !rec[q.id].ok);
+}
+
 /* ============ 导入导出（与 PC 端互通） ============ */
 function exportAll() {
   return JSON.stringify({
@@ -489,6 +541,7 @@ window.ZKStore = {
   computeProgress, computeDegree,
   setCourseStatus, saveScore, deleteScore,
   idbAll, idbPut, idbClear, recordSourceCrawl, toggleFavDirection, getFavDirections,
+  getPractice, recordPractice, resetPractice, practiceStats, wrongQuestions,
   exportAll, importData, resetAll,
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = window.ZKStore;
