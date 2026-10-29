@@ -1059,10 +1059,17 @@ async function openArticle(id){
           <button class="btn btn-p btn-full">阅读原文 ↗</button></a>`:''}
       </div>
       <div style="height:8px"></div>`;
+    // 记住打开来源，返回时回原页面（此前无条件回科目详情——
+    // 从资讯页打开文章点返回会被带到科目页）
+    S.articleFrom = (document.querySelector('.screen.on')?.id || 's-news').replace('s-','');
     go('article');
   }catch(e){toast('加载失败')}
 }
-function backFromArticle(){ go('courses'); setTimeout(()=>{if(S.curCourse)openCourse(S.curCourse.code)},50) }
+function backFromArticle(){
+  const from = S.articleFrom || 'news';
+  if(from === 'detail' && S.curCourse){ openCourse(S.curCourse.code); return; }
+  go(['home','courses','news','cal','degree','quiz'].includes(from) ? from : 'news');
+}
 function openCourseNews(code,name){ S.newsCat='全部'; loadNews().then(()=>{go('news');toast('已筛选 '+name+' 相关')}) }
 
 async function crawlNow(manual){
