@@ -100,10 +100,20 @@ async function renderQuiz(){
     $('#quizSub').textContent='—';
     return;
   }
-  const shown = filterBanksBySyllabus(banks);
+  const shownAll = filterBanksBySyllabus(banks);
+  // 科目筛选 chips：QB.subject='全部' 或课程代码
+  const courseCodes = [...new Set(shownAll.map(m => m.course).filter(Boolean))];
+  const cname = code => ((ZKStore.SYLLABUS.courses || []).find(c => c.code === code) || {}).name || code;
+  if (!QB.subject) QB.subject = '全部';
+  const shown = QB.subject === '全部' ? shownAll : shownAll.filter(m => m.course === QB.subject);
   const hidden = bankHiddenCount(banks);
-  if(!shown.length){
-    body.innerHTML='<div class="empty"><div class="e">📭</div>当前考纲下暂无题库<br><span style="font-size:11.5px">题库按科目与省份匹配，你的考纲科目出题后会自动出现</span></div>';
+  const chipHtml = courseCodes.length > 1 ? `
+    <div style="display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;margin:0 -16px;padding-left:16px;padding-right:16px">
+      ${['全部', ...courseCodes].map(c =>
+        `<div class="tabf ${QB.subject === c ? 'on' : ''}" onclick="setQuizSubject('${c}')">${c === '全部' ? '全部科目' : esc(cname(c))}</div>`).join('')}
+    </div>` : '';
+  if (!shown.length){
+    body.innerHTML = chipHtml + '<div class="empty"><div class="e">📭</div>该科目暂无题库</div>';
     $('#quizSub').textContent='—';
     return;
   }
@@ -158,6 +168,7 @@ async function renderQuiz(){
         <span style="font-size:10.5px;color:var(--t3)">已做 ${st.done}/${st.total}${st.wrong?' · 错 '+st.wrong:''}</span>
         <div style="margin-left:auto;display:flex;gap:6px">
           ${st.wrong?`<button class="btn btn-f" onclick="openWrongBook('${m.id}','${m.file}')">错题 ${st.wrong}</button>`:''}
+          <button class="btn btn-o" onclick="autoPaper('${m.id}','${m.file}')">🎲 组卷</button>
           <button class="btn btn-p" onclick="startBank('${m.id}','${m.file}')">${st.done?'继续':'开始'}</button>
         </div>
       </div>
@@ -171,6 +182,7 @@ async function renderQuiz(){
       <div class="c"><b class="num">${totalAll-doneAll}</b><span>待练</span></div>
       <div class="c"><b class="num">${rate}%</b><span>正确率</span></div>
     </div>
+    ${chipHtml}
     ${predCards}
     ${cards}
     <div style="font-size:10.5px;color:var(--t3);line-height:1.7;padding:6px 4px">
@@ -187,6 +199,40 @@ function quizHelp(){
       <p><b style="color:var(--t1)">④ 错题本</b>：考前 3 天只刷错题，性价比最高；错题刷对后会从错题本消失。</p>
       <p><b style="color:var(--t1)">⑤ 题库匹配</b>：只显示你考纲里有的科目和省份可用的题库，不会乱刷。</p>
     </div>`);
+}
+
+// ---------- 科目筛选 ----------
+function setQuizSubject(code){
+  QB.subject = code;
+  renderQuiz();
+}
+
+// ---------- 智能组卷 ----------
+// 自动生成一套练习卷：错题优先 → 未做题随机 → 已掌握补足，随机打乱。
+// 纯本地抽取（不依赖 AI/网络），答题记录仍按题库 id 归档，错题本/统计不受影响。
+function shuffle(arr){
+  const a=[...arr];
+  for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+async function autoPaper(id, file){
+  const bank = await loadBankFile(file);
+  const qs = flattenBank(bank);
+  if(!qs.length){ toast('该题库暂无题目'); return; }
+  const rec = ZKStore.getPractice(id).rec;
+  const wrong = shuffle(qs.filter(q => rec[q.id] && !rec[q.id].ok));   // 错题优先
+  const fresh = shuffle(qs.filter(q => !rec[q.id]));                    // 没做过的
+  const done  = shuffle(qs.filter(q => rec[q.id] && rec[q.id].ok));     // 已掌握的补足
+  const N = Math.min(20, qs.length);
+  const list = wrong.slice(0, N);
+  for (const q of [...fresh, ...done]) {
+    if (list.length >= N) break;
+    if (!list.includes(q)) list.push(q);
+  }
+  QB.bank=bank; QB.bid=id; QB.list=list; QB.mode='paper';
+  QB.sel=new Set(); QB.revealed=false; QB.idx=0;
+  QB.focus = { label: `智能组卷 · ${list.length} 题${wrong.length?`（含错题 ${Math.min(wrong.length,N)}）`:''}` };
+  go('run');
 }
 
 // ---------- 开始答题 ----------
