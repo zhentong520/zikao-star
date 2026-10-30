@@ -4,7 +4,7 @@
   "webDir": "web",
   "bundledWebRuntime": false,
   "android": {
-    "allowMixedContent": false,
+    "allowMixedContent": true,
     "captureInput": false,
     "webContentsDebuggingEnabled": false
   },

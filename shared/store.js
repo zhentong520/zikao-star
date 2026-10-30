@@ -66,6 +66,10 @@ function loadState() {
     _state.scoreRecords = _state.scoreRecords || {};
     _state.practice = _state.practice || {};
     _state.settings = { ...DEFAULT_STATE.settings, ...(_state.settings || {}) };
+    // 历史成绩记录补 id（修改/删除需要稳定标识；旧数据只有索引）
+    Object.values(_state.scoreRecords).forEach(arr => arr.forEach(r => {
+      if (r && !r.id) r.id = 'r' + Math.random().toString(36).slice(2, 9);
+    }));
   } catch (e) {
     console.warn('状态读取失败，重置', e);
     _state = JSON.parse(JSON.stringify(DEFAULT_STATE));
@@ -277,13 +281,15 @@ function bestScore(code) {
 function allScores(code) { return loadState().scoreRecords[code] || []; }
 
 /**
- * 有效状态 —— 与 PC 端 server/index.js 的 effectiveStatus 完全一致。
- * 成绩优先于手动状态，避免「有及格成绩却显示未通过」这类矛盾。
+ * 有效状态 —— 与 PC 端 server/index.js 的 effectiveStatus 语义一致。
+ * 优先级（用户要求可自由编辑）：手动设置的状态 > 成绩推导。
+ * 手动覆盖后，一旦成绩再变动（录入/删除），覆盖即失效回到自动推导。
  */
 function effectiveStatus(code) {
+  const uc = loadState().userCourse[code];
+  if (uc && uc.manual && uc.status) return uc.status;
   const s = bestScore(code);
   if (s !== null) return s >= 60 ? '已通过' : '未通过';
-  const uc = loadState().userCourse[code];
   return (uc && uc.status) || '未开始';
 }
 
@@ -332,32 +338,47 @@ function computeDegree() {
 function setCourseStatus(code, patch) {
   const s = loadState();
   s.userCourse[code] = { status: '未开始', planned_exam_date: null, note: '', starred: 0, is_selected: 0, ...(s.userCourse[code] || {}), ...patch };
+  // 用户显式设置状态 = 手动覆盖（effectiveStatus 优先显示手动状态）
+  if (patch && patch.status !== undefined && patch.status !== null && patch.status !== '') {
+    s.userCourse[code].manual = 1;
+  }
   saveState();
 }
 function saveScore(code, rec) {
   const s = loadState();
   if (!s.scoreRecords[code]) s.scoreRecords[code] = [];
-  s.scoreRecords[code].push({
+  const item = {
+    id: rec.recordId || ('r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)),
     score: rec.score === '' || rec.score === undefined || rec.score === null ? null : Number(rec.score),
     exam_date: rec.exam_date || null,
     exam_session: rec.exam_session || null,
     score_type: rec.score_type || '正常',
     remark: rec.remark || '',
-  });
-  // 状态跟着成绩走
+  };
+  // recordId 存在 = 修改已有记录；否则新增（此前 mobile 端修改会误追加新记录）
+  const i = rec.recordId ? s.scoreRecords[code].findIndex(r => r.id === rec.recordId) : -1;
+  if (i >= 0) s.scoreRecords[code][i] = item; else s.scoreRecords[code].push(item);
+  // 状态跟着成绩走：成绩是权威，清除手动覆盖
   const b = bestScore(code);
   s.userCourse[code] = { ...(s.userCourse[code] || { status: '未开始' }),
+    manual: 0,
     status: b === null ? '已考待出分' : (b >= 60 ? '已通过' : '未通过') };
   saveState();
   return { bestScore: b, status: s.userCourse[code].status };
 }
-function deleteScore(code, idx) {
+function deleteScore(code, key) {
   const s = loadState();
-  if (!s.scoreRecords[code]) return;
-  s.scoreRecords[code].splice(idx, 1);
-  if (!s.scoreRecords[code].length) delete s.scoreRecords[code];
+  const arr = s.scoreRecords[code];
+  if (!arr || key === null || key === undefined) return;
+  // 先按记录 id 删；旧数据无 id 时按索引兜底
+  let i = arr.findIndex(r => r.id === key);
+  if (i < 0 && Number.isInteger(key) && key >= 0 && key < arr.length) i = key;
+  if (i < 0) return;
+  arr.splice(i, 1);
+  if (!arr.length) delete s.scoreRecords[code];
   const b = bestScore(code);
   if (s.userCourse[code]) {
+    s.userCourse[code].manual = 0;
     s.userCourse[code].status = b === null ? '备考中' : (b >= 60 ? '已通过' : '未通过');
   }
   saveState();

@@ -26,6 +26,19 @@ if (!fs.existsSync(DB_PATH)) {
 }
 const db = new DatabaseSync(DB_PATH);
 db.exec('PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;');
+// 轻量迁移：user_course 加 manual 列（1=用户手动设置的状态，优先于成绩推导显示）
+try {
+  const cols = db.prepare("PRAGMA table_info(user_course)").all().map(c => c.name);
+  if (cols.length && !cols.includes('manual')) {
+    db.exec('ALTER TABLE user_course ADD COLUMN manual INTEGER DEFAULT 0');
+    console.log('✅ 迁移：user_course 补充 manual 列');
+  }
+  const newsCols = db.prepare("PRAGMA table_info(news)").all().map(c => c.name);
+  if (newsCols.length && !newsCols.includes('images')) {
+    db.exec('ALTER TABLE news ADD COLUMN images TEXT');
+    console.log('✅ 迁移：news 补充 images 列');
+  }
+} catch (e) { console.warn('迁移检查跳过:', e.message); }
 
 // ============ 计算核心：进度 / 均分 / 学位 ============
 function ensureProfile() {
@@ -43,7 +56,7 @@ function courseList(profileId, includeAddOn = false) {
   return db.prepare(`
     SELECT c.id AS course_id, c.seq, c.code, c.name, c.credits, c.course_type, c.exam_mode,
            c.is_thesis, c.parent_code, c.sort_order,
-           uc.id AS uc_id, uc.status, uc.is_selected, uc.planned_exam_date, uc.booked_exam_session,
+           uc.id AS uc_id, uc.status, uc.manual, uc.is_selected, uc.planned_exam_date, uc.booked_exam_session,
            uc.note, uc.starred
     FROM course c
     LEFT JOIN user_course uc ON uc.course_id=c.id AND uc.profile_id=?
@@ -90,15 +103,12 @@ function scoreMapByCode(profileId) {
 
 /**
  * 有效状态推导 —— 状态的唯一真相来源。
- *
- * 背景：user_course.status 可能为 NULL（该科从未建过记录），
- * 且可能与成绩矛盾（例：某科已有及格成绩却仍标"已报名"）。
- * 因此规则是「成绩优先于手动状态」：
- *   1. 有及格成绩  → 已通过（不可手工降级，避免与均分计算冲突）
- *   2. 有未及格成绩 → 未通过（待补考）
- *   3. 无成绩      → 用手动状态；为空则「未开始」
+ * 优先级（用户要求可自由编辑）：手动设置的状态 > 成绩推导。
+ * 手动覆盖后，一旦成绩再变动（录入/删除），覆盖即失效回到自动推导。
  */
 function effectiveStatus(row) {
+  const uc = row;
+  if (uc && uc.manual === 1 && uc.status) return uc.status;
   const s = row.bestScore !== undefined ? row.bestScore : bestScore(row.uc_id);
   if (s !== null && s !== undefined) return s >= 60 ? '已通过' : '未通过';
   return row.status || '未开始';
@@ -157,7 +167,7 @@ function computeDegree(profileId) {
 /** 科目详情：资讯 TOP3 + 状态 + 成绩 */
 function courseDetail(profileId, courseCode) {
   const c = db.prepare(`
-    SELECT c.*, uc.id AS uc_id, uc.status, uc.planned_exam_date, uc.booked_exam_session, uc.note, uc.starred
+    SELECT c.*, uc.id AS uc_id, uc.status, uc.manual, uc.planned_exam_date, uc.booked_exam_session, uc.note, uc.starred
     FROM course c LEFT JOIN user_course uc ON uc.course_id=c.id AND uc.profile_id=?
     WHERE c.code=? AND c.group_id=(SELECT group_id FROM profile WHERE id=?)
     LIMIT 1`).get(profileId, courseCode, profileId);
@@ -334,13 +344,16 @@ const routes = {
     if (!c) return { ok: false, msg: '课程不存在' };
     const exist = db.prepare('SELECT id FROM user_course WHERE profile_id=? AND course_id=?').get(p.id, c.id);
     if (exist) {
-      db.prepare('UPDATE user_course SET status=?, planned_exam_date=?, note=?, starred=?, is_selected=? WHERE id=?')
+      // 显式设置状态 = 手动覆盖（manual=1，effectiveStatus 优先显示）
+      const manual = (body.status !== undefined && body.status !== null && body.status !== '') ? 1 : 0;
+      db.prepare('UPDATE user_course SET status=?, planned_exam_date=?, note=?, starred=?, is_selected=?, manual=? WHERE id=?')
         .run(body.status, body.planned_exam_date || null, body.note || null,
-             body.starred ? 1 : 0, body.is_selected ? 1 : 0, exist.id);
+             body.starred ? 1 : 0, body.is_selected ? 1 : 0, manual, exist.id);
     } else {
-      db.prepare(`INSERT INTO user_course (profile_id,course_id,status,planned_exam_date,note,starred,is_selected)
-        VALUES (?,?,?,?,?,?,?)`).run(p.id, c.id, body.status || '未开始',
-        body.planned_exam_date || null, body.note || null, body.starred ? 1 : 0, body.is_selected ? 1 : 0);
+      db.prepare(`INSERT INTO user_course (profile_id,course_id,status,planned_exam_date,note,starred,is_selected,manual)
+        VALUES (?,?,?,?,?,?,?,?)`).run(p.id, c.id, body.status || '未开始',
+        body.planned_exam_date || null, body.note || null, body.starred ? 1 : 0, body.is_selected ? 1 : 0,
+        (body.status !== undefined && body.status !== null && body.status !== '') ? 1 : 0);
     }
     return { ok: true, progress: computeProgress(p.id), degree: computeDegree(p.id) };
   },
@@ -369,7 +382,7 @@ const routes = {
     // 自动流转状态
     const best = bestScore(uc.id);
     const newStatus = best === null ? '已考待出分' : (best >= 60 ? '已通过' : '未通过');
-    db.prepare('UPDATE user_course SET status=? WHERE id=?').run(newStatus, uc.id);
+    db.prepare('UPDATE user_course SET status=?, manual=0 WHERE id=?').run(newStatus, uc.id);
 
     return {
       ok: true, bestScore: best, status: newStatus,
@@ -387,7 +400,7 @@ const routes = {
     if (!uc) return { ok: false };
     db.prepare('DELETE FROM score_record WHERE id=? AND user_course_id=?').run(parseInt(body.recordId, 10), uc.id);
     const best = bestScore(uc.id);
-    db.prepare('UPDATE user_course SET status=? WHERE id=?').run(best === null ? '备考中' : (best >= 60 ? '已通过' : '未通过'), uc.id);
+    db.prepare('UPDATE user_course SET status=?, manual=0 WHERE id=?').run(best === null ? '备考中' : (best >= 60 ? '已通过' : '未通过'), uc.id);
     return { ok: true, progress: computeProgress(p.id), degree: computeDegree(p.id) };
   },
 

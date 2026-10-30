@@ -198,6 +198,30 @@ function extractMainText(html) {
   return out.slice(0, 20000);
 }
 
+/* ==================== 正文图片提取 ====================
+ * 资讯正文是纯文本，图片 URL 单独抽取存储（最多 5 张），详情页渲染。
+ * 过滤：data:/svg 内联、图标类命名、超短路径；相对地址按文章 URL 绝对化。
+ */
+const IMG_NOISE = /icon|logo|sprite|blank|spacer|button|banner_ad|qrcode|weixin|weibo|avatar|emoji/i;
+
+function extractImages(html, baseUrl) {
+  const out = [];
+  const seen = new Set();
+  const re = /<img\b[^>]*?\bsrc\s*=\s*["']([^"']+)["']/gi;
+  let m;
+  while ((m = re.exec(String(html || ''))) && out.length < 5) {
+    let src = m[1].trim();
+    if (!src || /^(data|javascript):/i.test(src)) continue;
+    if (/\.svg(\?|$)/i.test(src) || IMG_NOISE.test(src)) continue;
+    let abs;
+    try { abs = new URL(src, baseUrl).href; } catch { continue; }
+    if (!/^https?:/i.test(abs) || seen.has(abs)) continue;
+    seen.add(abs);
+    out.push(abs);
+  }
+  return out;
+}
+
 /* ==================== 相关度打分 ==================== */
 function calcRelevance(title, body, matched, source) {
   let s = 0.3;
@@ -245,7 +269,7 @@ const GD_ENROLL_MONTHS = [2, 8, 11];   // 报名约在考前 2-3 个月
  */
 const ZKRules = {
   classify, isSelfStudyRelevant, detectChange, matchCourses,
-  stripTags, extractLinks, extractMainText, decodeEntities,
+  stripTags, extractLinks, extractMainText, decodeEntities, extractImages,
   calcRelevance, guessPublishedAt, simpleHash,
   CATEGORY_RULES, URGENT_PATTERNS, KNOWN_CODES,
   SELF_STUDY_SIGNS, IRRELEVANT_SIGNS, OTHER_PROVINCE_SIGNS,

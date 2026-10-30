@@ -165,6 +165,7 @@
               r.content = body;
               r.summary = r.summary || body.slice(0, 180);
               r.need_fetch = 0;
+              r.images = R.extractImages(html, r.url);   // 正文配图
             }
           } catch (e) { /* 抓不到则保持延迟补抓 */ }
           prefetched++;

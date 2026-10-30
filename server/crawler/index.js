@@ -217,7 +217,7 @@ class Crawler {
     if (exist) return { inserted: false, id: exist.id, reason: 'dup' };
 
     // 标题择优
-    let title = fallbackTitle, body = '';
+    let title = fallbackTitle, body = '', images = [];
     try {
       // 详情页带列表页 Referer：深大 student-cce 等站点无 Referer 会 412
       const html = await fetchHtml(url, {
@@ -237,6 +237,7 @@ class Crawler {
       }
       // extractMainText 内部已做 script/style/nav/header/footer/aside 清洗
       body = R.extractMainText(html);
+      images = R.extractImages(html, url);   // 正文配图（最多 5 张，绝对化 URL）
     } catch (e) { /* 正文抓不到不影响入库，但留一行日志便于排障 */
       console.warn(`[crawler] 正文抓取失败 ${url}: ${e.message}`);
     }
@@ -276,11 +277,12 @@ class Crawler {
 
     const pubDate = R.guessPublishedAt(full, url);
     this.db.prepare(`INSERT INTO news
-      (hash,title,url,source_id,source_name,category,summary,content,published_at,relevance,matched_courses,change_flag)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`).run(
+      (hash,title,url,source_id,source_name,category,summary,content,published_at,relevance,matched_courses,change_flag,images)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
       hash, title, url, source.id, source.name, category,
       body.slice(0, 180) || null, body || null, pubDate,
-      relevance, matched.join(','), changeFlag
+      relevance, matched.join(','), changeFlag,
+      images.length ? JSON.stringify(images) : null
     );
     return { inserted: true };
   }

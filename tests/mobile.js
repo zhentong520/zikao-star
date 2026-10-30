@@ -59,9 +59,16 @@ function ok(name, cond, detail = '') {
   ok('最高分计算', S.bestScore('15040') === 86, '实际 ' + S.bestScore('15040'));
   ok('成绩优先→已通过', S.effectiveStatus('15040') === '已通过');
 
-  // 手动状态被成绩覆盖
+  // 手动设置状态优先显示（用户要求可自由编辑，不用拦截）
   S.setCourseStatus('15040', { status: '已报名' });
-  ok('有及格分时手动状态被覆盖', S.effectiveStatus('15040') === '已通过', '实际 ' + S.effectiveStatus('15040'));
+  ok('手动设置状态优先显示', S.effectiveStatus('15040') === '已报名', '实际 ' + S.effectiveStatus('15040'));
+  // 成绩再变动 → 手动覆盖清除，回到自动推导；用完按 id 删除恢复数据
+  S.saveScore('15040', { score: 90, exam_date: '2026-10-30', score_type: '正常' });
+  ok('成绩变动后清除手动覆盖', S.effectiveStatus('15040') === '已通过', '实际 ' + S.effectiveStatus('15040'));
+  const rec90 = S.allScores('15040').find(r => r.score === 90);
+  S.deleteScore('15040', rec90.id);
+  ok('按 id 删除成绩记录（新语义）', S.allScores('15040').length === 1 && S.bestScore('15040') === 86,
+    '剩余 ' + S.allScores('15040').length + ' 条 best=' + S.bestScore('15040'));
 
   // 补考按 60 计
   S.saveScore('13009', { score: 55, exam_date: '2026-04-12', score_type: '补考' });

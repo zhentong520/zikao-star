@@ -571,6 +571,7 @@ const ZKLocal = {
         rec.content=window.ZKRules.extractMainText(cleaned);
         rec.summary=(rec.content||'').slice(0,180)||rec.summary;
         rec.need_fetch=0;
+        rec.images=window.ZKRules.extractImages(html,rec.url);
         await window.ZKStore.idbPut([rec]);   // 回写，下次秒开
       }catch(e){ /* 抓不到就用标题，页面有「阅读原文」兜底 */ }
     }
@@ -933,7 +934,8 @@ async function saveScore(){
 async function delScore(id){
   const d=S.curCourse; if(!d) return;
   if(!confirm('确定删除这条成绩记录？')) return;
-  const r=MODE==='pc'?await POST('/api/score/delete',{code:d.code,recordId:id}):await ZKLocal.delScore(d.code,d.scores.findIndex(x=>x.id===id));
+  // PC 端按记录 id；移动端记录现也带 id（旧数据 loadState 时已补），直接传 id
+  const r=MODE==='pc'?await POST('/api/score/delete',{code:d.code,recordId:id}):await ZKLocal.delScore(d.code,id);
   if(r.ok){await refresh();toast('已删除');openCourse(d.code)}
 }
 
@@ -1086,6 +1088,9 @@ async function openArticle(id){
     if(MODE==='pc'){ POST('/api/news/read',{id}).catch(()=>{}); const it=(S.news||[]).find(x=>x.id===id); if(it) it.is_read=1; }
     else { n.is_read=1; window.ZKStore.idbPut([n]).catch(()=>{}); }   // 移动端此前从不标已读，变动预警永远不清
     const body=(n.content||n.summary||'（正文未抓取到，可点击下方查看原文）');
+    // 正文配图：抓取时抽取的图片 URL（http 图需 WebView 允许混合内容）
+    const imgs=(n.images&&n.images.length?n.images:[]).slice(0,5);
+    const imgsHtml=imgs.map(u=>`<img src="${esc(u)}" loading="lazy" style="width:100%;border-radius:12px;margin:6px 0;display:block" onerror="this.style.display='none'">`).join('');
     $('#artScroll').innerHTML=`
       <div class="appbar">
         <div style="display:flex;align-items:center;gap:10px">
@@ -1100,6 +1105,7 @@ async function openArticle(id){
           <span class="news-src">${esc(n.source_name||'未知来源')}</span>
           <span class="news-time">${n.published_at||''}</span>
         </div>
+        ${imgsHtml}
         <div class="art-b">${esc(body)}</div>
         <div class="art-src">
           📌 本文由本地爬虫抓取自<br><b>${esc(n.url)}</b><br>
