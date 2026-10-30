@@ -196,11 +196,12 @@ async function renderQuiz(){
 function quizHelp(){
   openSheet('怎么刷最有效', `
     <div style="font-size:13px;line-height:1.9;color:var(--t2)">
-      <p><b style="color:var(--t1)">① 考点预测</b>：页顶 🎯 卡片按历代真题频次排考点，×N 场 = 考过几次，先练高频再全覆盖，这就是预习路径。</p>
-      <p><b style="color:var(--t1)">② 单选/多选</b>：点选项即判对错，答完立刻看考点，错当场记。</p>
-      <p><b style="color:var(--t1)">③ 填空/简答</b>：先在纸上写，再点「看答案」自评，别偷懒直接看。</p>
-      <p><b style="color:var(--t1)">④ 错题本</b>：考前 3 天只刷错题，性价比最高；错题刷对后会从错题本消失。</p>
-      <p><b style="color:var(--t1)">⑤ 题库匹配</b>：只显示你考纲里有的科目和省份可用的题库，不会乱刷。</p>
+      <p><b style="color:var(--t1)">① 科目筛选</b>：顶部 chips 一键切换科目，题库与考点预测联动过滤。</p>
+      <p><b style="color:var(--t1)">② 智能组卷</b>：题库卡「🎲 组卷」自动生成 20 题混合卷——错题优先、未做题随机、已掌握补足，每次都是新卷子。</p>
+      <p><b style="color:var(--t1)">③ 考点预测</b>：🎯 卡片按历代真题频次排考点，×N 场 = 考过几次，先练高频再全覆盖。</p>
+      <p><b style="color:var(--t1)">④ 解答思路</b>：每题判分后都有 💡 思路——为什么选它、坑在哪，比只看答案记得牢。</p>
+      <p><b style="color:var(--t1)">⑤ 题型规则</b>：单选/多选点选项即判（多选需确认）；填空/简答先自己写再对答案自评。</p>
+      <p><b style="color:var(--t1)">⑥ 错题本</b>：错题自动收录、刷对自动移出；考前 3 天只刷错题，性价比最高。</p>
     </div>`);
 }
 

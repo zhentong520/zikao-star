@@ -40,17 +40,17 @@ APK 位置：`zikao-app/zikao.apk`
 
 ### 需要先装两样东西（一次性约 600MB）
 
-**① JDK 17**
+**① JDK 21**（Capacitor 7 要求；17 及以下无法构建）
 
 国内直接下载 GitHub 极慢，用华为云镜像：
 
 ```bash
-curl -L -o jdk17.zip "https://mirrors.huaweicloud.com/openjdk/17.0.2/openjdk-17.0.2_windows-x64_bin.zip"
+curl -L -o jdk21.zip "https://mirrors.huaweicloud.com/openjdk/21.0.2/openjdk-21.0.2_windows-x64_bin.zip"
 ```
 
 解压后设置环境变量：
 ```
-JAVA_HOME = <解压目录>/jdk-17.0.2
+JAVA_HOME = <解压目录>/jdk-21.0.2
 PATH 追加  %JAVA_HOME%/bin
 ```
 
@@ -70,14 +70,14 @@ android-sdk/
 
 装组件：
 ```bash
-sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 ```
 
 ### 国内必须改镜像（否则超时）
 
 **① Gradle 镜像** — `android/gradle/wrapper/gradle-wrapper.properties`
 ```properties
-distributionUrl=https\://mirrors.cloud.tencent.com/gradle/gradle-8.2.1-all.zip
+distributionUrl=https\://mirrors.cloud.tencent.com/gradle/gradle-8.11.1-all.zip
 networkTimeout=120000
 ```
 
@@ -103,6 +103,8 @@ cd android
 ```
 
 **产物**：`android/app/build/outputs/apk/debug/app-debug.apk`
+
+> 正式签名：在项目根目录放 `zikao-release.keystore` + `keystore.properties`（storeFile/storePassword/keyAlias/keyPassword），然后 `./gradlew assembleRelease`，产物在 `apk/release/`。两文件均已在 .gitignore，**务必自行备份**。
 
 ---
 
