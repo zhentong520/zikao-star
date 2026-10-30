@@ -41,7 +41,7 @@ $$('.tab').forEach(t=>t.onclick=()=>go(t.dataset.s));
  * 记录：ZKStore.practice（localStorage，随导出/导入走）
  * 题型：single 单选 / multi 多选 / fill 填空 / short 简答（自评）
  */
-const QB = { banks:null, predict:null, cache:{}, list:[], bank:null, bid:'', idx:0, sel:new Set(), mode:'all', focus:null, revealed:false };
+const QB = { banks:null, predict:null, explain:{}, cache:{}, list:[], bank:null, bid:'', idx:0, sel:new Set(), mode:'all', focus:null, revealed:false };
 // esc() 复用文件后面的通用转义函数（本模块函数均在运行时调用，安全）
 
 async function loadBankIndex(){
@@ -54,6 +54,9 @@ async function loadBankIndex(){
     const p = await API('shared/banks/predict.json');
     QB.predict = p && p.courses ? p : null;
   } catch(e){ QB.predict = null; }
+  // 解答思路：按题目 id 独立存放（重建题库不丢失）
+  try { QB.explain = await API('shared/banks/explain.json') || {}; }
+  catch(e){ QB.explain = {}; }
   return QB.banks;
 }
 async function loadBankFile(file){
@@ -297,6 +300,7 @@ function renderRun(){
       : (rec.ok?'已掌握 ✓':'待巩固');
     feedback = `<div class="qans ${rec.ok?'ok':''}">
       <div><b>${esc(head)}</b></div>
+      ${QB.explain && QB.explain[q.id]?`<div style="margin-top:4px">💡 ${esc(QB.explain[q.id])}</div>`:''}
       ${q.kp?`<div style="margin-top:4px">考点：${esc(q.kp)}</div>`:''}
       ${q.type==='fill'?`<div style="margin-top:4px">参考答案：<b>${esc(q.answerText||'')}</b></div>`:''}
       ${q.type==='short'?`<div class="shortans">${q.answerHtml||''}</div>`:''}

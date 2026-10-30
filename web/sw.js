@@ -1,5 +1,5 @@
 /* 自考星 Service Worker —— 离线可用 + 缓存加速 */
-const VERSION = 'zikao-20261030-0038';   // v3：刷题考纲过滤 + 考点预测，旧缓存需失效
+const VERSION = 'zikao-20261030-0946';   // v3：刷题考纲过滤 + 考点预测，旧缓存需失效
 const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icon.svg', '/icon-192.png', '/icon-180.png', '/style.css', '/app.js'];
 
 self.addEventListener('install', (e) => {
